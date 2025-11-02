@@ -52,14 +52,19 @@ Including an orbital camera and a basic editor for easier use, this version cons
   * -> Latest Release: opens the project's [Releases](https://github.com/KaiCaire/vroom-engine/releases) page
   * -> About: opens window with information about the program
 
-### Additional Actions
+Additional Actions
 
-* que se puede hacer drag and drop y tal
+* 3D models Drag & Drop (.fbx/.obj) from any File Explorer directory
+* Texture Drag & Drop (.png/.jpg/.tga/.dds) onto selected GameObjects from the Inspector
 
-## Additional Features
+Additional Features
 
-* cambiar el nombre, borrar objetos etc etc
+* Rename selected GameObject
+* Delete GameObjects
+* Textures with transparency
+* Shaders read from external files
 
+  
 ## Authors
 
 * Ivan Alvarez -> [ivalpe](https://github.com/Ivalpe)
@@ -67,7 +72,18 @@ Including an orbital camera and a basic editor for easier use, this version cons
 * Lara Guevara -> [LaraGuevara](https://github.com/LaraGuevara)
 * Bernat Loza -> [BerniF0x](https://github.com/BerniF0x)
 
-## Created Using
+## Created Using The Following Libraries
+* vcpkg
+* sdl3 y sdl3.image
+* glad -> OpenGL
+* assimp
+* glm
+* stb
+* imgui
 
-* [las mil millones de librerias aqui pls este link es inutil de momento pero darle click para easter egg](https://www.youtube.com/watch?v=OnGQeVTt4KI)
+
+
+
+## Easter Egg
+* Easter Egg (https://www.youtube.com/watch?v=OnGQeVTt4KI)
 
