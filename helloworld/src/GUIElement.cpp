@@ -330,6 +330,10 @@ void GUIElement::HierarchySetUp(bool* show)
 }
 
 void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_ptr<GameObject>& selected) {
+	//make sure obj is not set for deletion
+	if (!obj) return;
+	if (obj.get()->IsMarkedForDestroy()) return;
+
 	//setup tree structure (add arrows to expandable objects, make it so they show as selected)
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
 		(obj == selected ? ImGuiTreeNodeFlags_Selected : 0) |
