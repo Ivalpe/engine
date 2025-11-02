@@ -39,10 +39,10 @@ An in-depth paragraph about your project and overview of use.
 
 ## Authors
 
-* Ivan Alvarez &rarr [ivalpe](https://github.com/Ivalpe)
-* Kai Caire &rarr [KaiCaire](https://github.com/KaiCaire)
-* Lara Guevara &rarr [LaraGuevara](https://github.com/LaraGuevara)
-* Bernat Loza &rarr [BerniF0x](https://github.com/BerniF0x)
+* Ivan Alvarez -> [ivalpe](https://github.com/Ivalpe)
+* Kai Caire -> [KaiCaire](https://github.com/KaiCaire)
+* Lara Guevara -> [LaraGuevara](https://github.com/LaraGuevara)
+* Bernat Loza -> [BerniF0x](https://github.com/BerniF0x)
 
 ## Created Using
 
