@@ -14,7 +14,16 @@ An in-depth paragraph about your project and overview of use.
 
 ### Camera Controls
 
-* todas las cositas de la camera
+* Free Look (WASDQE) is enabled by holding the Right Mouse Button.
+* Move Forward/Backward: W / S.
+* Move Left/Right: A / D.
+* Move Up/Down: E / Q.
+* Accelerate Movement: Hold LShift.
+* Orbital Rotation: ALT + Left Mouse Button.
+* Panning: ALT + Middle Mouse Button (Scroll Wheel Click).
+* Zoom in Depth: ALT + Right Mouse Button.
+* Scroll Zoom: Use the Mouse Wheel.
+* Focus on Selected Object: Press F.
 
 ### Options and Settings
 
