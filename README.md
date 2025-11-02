@@ -74,16 +74,10 @@ Additional Features
 
 ## Created Using The Following Libraries
 * vcpkg
-* sdl3 y sdl3.image
-* glad -> OpenGL
+* sdl-3 & sdl-3.image
+* glad (for OpenGL)
 * assimp
 * glm
 * stb
 * imgui
-
-
-
-
-## Easter Egg
-* Easter Egg (https://www.youtube.com/watch?v=OnGQeVTt4KI)
 
