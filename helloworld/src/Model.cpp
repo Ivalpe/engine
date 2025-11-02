@@ -348,3 +348,83 @@ void Model::LogGameObjectHierarchy(shared_ptr<GameObject> go, int depth) {
     for (auto& child : go->GetChildren())
         LogGameObjectHierarchy(child, depth + 1);
 }
+
+void Model::DestroyGameObject(std::shared_ptr<GameObject> gameObject) {
+    if (!gameObject) {
+        LOG("WARNING: Attempted to destroy null GameObject");
+        return;
+    }
+
+    LOG("Destroying GameObject '%s'", gameObject->GetName().c_str());
+
+    // Marcar este GameObject
+    gameObject->MarkForDestroy();
+
+    // Lambda recursiva sin std::function
+    auto markChildren = [&](auto&& self, std::shared_ptr<GameObject> go) -> void {
+        for (auto& child : go->GetChildren()) {
+            if (child && !child->IsMarkedForDestroy()) {
+                LOG("  - Marking child '%s' for destruction", child->GetName().c_str());
+                child->MarkForDestroy();
+                self(self, child);  // recursión
+            }
+        }
+        };
+
+    // Llamar con la función y el objeto raíz
+    markChildren(markChildren, gameObject);
+
+    // Desconectar del padre
+    if (auto parent = gameObject->GetParent()) {
+        parent->RemoveChild(gameObject);
+        LOG("  - Disconnected from parent '%s'", parent->GetName().c_str());
+    }
+}
+
+void Model::CleanUpDestroyedObjects() {
+    size_t beforeCount = gameObjects.size();
+
+    // Eliminar GameObjects marcados
+    gameObjects.erase(
+        std::remove_if(gameObjects.begin(), gameObjects.end(),
+            [](const std::shared_ptr<GameObject>& go) {
+                return go && go->IsMarkedForDestroy();
+            }),
+        gameObjects.end()
+    );
+
+    size_t afterCount = gameObjects.size();
+    if (beforeCount != afterCount) {
+        LOG("Cleanup: Removed %d GameObject(s). Remaining: %d",
+            (int)(beforeCount - afterCount), (int)afterCount);
+    }
+}
+
+std::shared_ptr<GameObject> Model::CreateEmptyGameObject(const std::string& name, std::shared_ptr<GameObject> parent) {
+    LOG("Creating empty GameObject: '%s'", name.c_str());
+
+    // Crear GameObject vacío
+    auto newGameObject = std::make_shared<GameObject>(name);
+
+    // Añadir Transform (todos los GameObjects necesitan Transform)
+    newGameObject->AddComponent(ComponentType::TRANSFORM);
+
+    // Establecer parent
+    if (parent) {
+        newGameObject->SetParent(parent);
+        LOG("  - Parent set to '%s'", parent->GetName().c_str());
+    }
+    else if (rootGameObject) {
+        // Si no se especifica parent, usar el root
+        newGameObject->SetParent(rootGameObject);
+        LOG("  - Parent set to root");
+    }
+
+    // Añadir a la lista
+    gameObjects.push_back(newGameObject);
+
+    LOG("Empty GameObject '%s' created successfully (Total GameObjects: %d)",
+        name.c_str(), (int)gameObjects.size());
+
+    return newGameObject;
+}

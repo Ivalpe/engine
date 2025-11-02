@@ -40,9 +40,13 @@ public:
     const std::string& GetName() const { return name; }
     void SetName(const std::string& n) { name = n; }
 
+    bool IsMarkedForDestroy() const { return markedForDestroy; }
+    void MarkForDestroy() { markedForDestroy = true; }
+
 private:
     std::string name;
     bool active = true;
+    bool markedForDestroy = false;
 
     std::weak_ptr<GameObject> parent;                          // Weak pointer to parent
     std::vector<std::shared_ptr<GameObject>> children;         // Shared pointers to children

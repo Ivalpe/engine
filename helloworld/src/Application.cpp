@@ -139,7 +139,9 @@ void Application::PrepareUpdate()
 // ---------------------------------------------
 void Application::FinishUpdate()
 {
-
+    if (openGL && openGL->ourModel) {
+        openGL->ourModel->CleanUpDestroyedObjects();
+    }
 }
 
 // Call modules before each loop iteration
