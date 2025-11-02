@@ -88,8 +88,26 @@ Model::Model(Mesh mesh) {
 }
 
 void Model::Draw(Shader& shader) {
-    for (auto& mesh : meshes)
-        mesh->Draw(shader);
+    /*for (auto& mesh : meshes)
+        mesh->Draw(shader);*/
+
+    for (auto& gameObject : gameObjects) {
+        // Skip destroyed or inactive GameObjects
+        if (!gameObject || gameObject->IsMarkedForDestroy() || !gameObject->IsActive())
+            continue;
+
+        // Check if this GameObject has a MeshRenderer
+        auto rendererComp = gameObject->GetComponent(ComponentType::MESH_RENDERER);
+        if (!rendererComp)
+            continue;
+
+        auto renderer = std::dynamic_pointer_cast<RenderMeshComponent>(rendererComp);
+        if (!renderer || !renderer->GetMesh())
+            continue;
+
+        // Draw the mesh
+        renderer->GetMesh()->Draw(shader);
+    }
 }
 
 void Model::processNodeWithGameObjects(aiNode* node, const aiScene* scene, shared_ptr<GameObject> parent) {
