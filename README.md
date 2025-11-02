@@ -8,10 +8,6 @@ An in-depth paragraph about your project and overview of use.
 
 ## Getting Started
 
-### Program Basics
-
-* pues eso basics
-
 ### Camera Controls
 
 * Free Look (WASDQE) is enabled by holding the Right Mouse Button.
