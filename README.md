@@ -1,10 +1,11 @@
 # Vroom Engine
 
-Simple overview of use/purpose.
+Geometry visualizer and base for a Game Engine.
+[Github link](https://github.com/KaiCaire/vroom-engine)
 
 ## Description
 
-An in-depth paragraph about your project and overview of use.
+Including an orbital camera and a basic editor for easier use, this version consists of a 3D geometry visualizer, capable of importing different models (via drag and drop).
 
 ## Getting Started
 
