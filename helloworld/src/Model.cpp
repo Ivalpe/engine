@@ -17,7 +17,7 @@
 using namespace std;
 
 // Static list of loaded textures
-vector<Texture> textures_loaded;
+vector<Texture> textures_loaded = Application::GetInstance().textures.get()->textures_loaded;
 
 
 
@@ -58,6 +58,8 @@ void Model::loadModel(string path) {
 Model::Model(Mesh mesh) {
     auto gameObject = make_shared<GameObject>();
     gameObjects.push_back(gameObject);
+    rootGameObject = gameObject;
+    
 
     /*LOG("Created Cube: '%s' (Parent: '%s')", gameObject->GetName().c_str(), parent ? parent->GetName().c_str() : "NULL");*/
 
@@ -79,12 +81,19 @@ Model::Model(Mesh mesh) {
         position.x, position.y, position.z,
         scaling.x, scaling.y, scaling.z);
 
-    
-    /*gameObject->SetParent(rootGameObject);*/
-    /*LOG("  - Set parent to '%s'", rootGameObject->GetName());*/
-    
-    //TODO: define & apply default material
-     meshes.push_back(make_shared<Mesh>(mesh));
+
+    // Create & store mesh 
+    auto sharedMesh = make_shared<Mesh>(mesh);
+    meshes.push_back(sharedMesh);
+
+    // Add RenderMeshComponent and SET the mesh
+    auto meshComp = gameObject->AddComponent(ComponentType::MESH_RENDERER);
+    auto modelMesh = static_cast<RenderMeshComponent*>(meshComp.get());
+    modelMesh->SetMesh(sharedMesh); 
+
+    LOG("  - Added RenderMeshComponent with mesh");
+
+     
 }
 
 void Model::Draw(Shader& shader) {
@@ -296,13 +305,13 @@ void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMe
     auto mesh = std::make_shared<Mesh>(vertices, indices, textures);
     meshes.push_back(mesh); // store shared_ptr
 
-    // --- Add MeshRenderer Component ---
+    // --- Add RenderMeshComponent Component ---
     auto rendererComp = gameObject->AddComponent(ComponentType::MESH_RENDERER);
     auto renderer = std::dynamic_pointer_cast<RenderMeshComponent>(rendererComp);
     if (renderer)
     {
         renderer->SetMesh(mesh); // pass shared_ptr<Mesh>
-        LOG("  - Added MeshRenderer component to '%s'", gameObject->GetName().c_str());
+        LOG("  - Added RenderMeshComponent component to '%s'", gameObject->GetName().c_str());
     }
 
     // --- Add Material Component ---

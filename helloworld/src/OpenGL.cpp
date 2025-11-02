@@ -338,7 +338,6 @@ void OpenGL::ProcessScrollZoom(float delta, bool isMouseScroll)
 
 
 Model OpenGL::CreateCube() {
-
 	const glm::vec3 v000(-1.0f, -1.0f, -1.0f);
 	const glm::vec3 v001(-1.0f, -1.0f, 1.0f);
 	const glm::vec3 v010(-1.0f, 1.0f, -1.0f);
@@ -348,95 +347,72 @@ Model OpenGL::CreateCube() {
 	const glm::vec3 v110(1.0f, 1.0f, -1.0f);
 	const glm::vec3 v111(1.0f, 1.0f, 1.0f);
 
-
 	std::vector<Vertex> _vertices;
 	std::vector<unsigned int> _indices;
-	std::vector<glm::vec3> _normals;
-	std::vector<glm::vec2> _texCoords;
 	std::vector<Texture> _textures;
 
+	// Helper arrays for normals and texcoords
+	const glm::vec3 normals[6] = {
+		glm::vec3(0.0f, 0.0f, 1.0f),   // Front
+		glm::vec3(0.0f, 0.0f, -1.0f),  // Back
+		glm::vec3(1.0f, 0.0f, 0.0f),   // Right
+		glm::vec3(-1.0f, 0.0f, 0.0f),  // Left
+		glm::vec3(0.0f, 1.0f, 0.0f),   // Top
+		glm::vec3(0.0f, -1.0f, 0.0f)   // Bottom
+	};
 
-	// Frontal face (+Z)
-	_vertices.push_back({ v001 }); // 0
-	_vertices.push_back({ v101 }); // 1
-	_vertices.push_back({ v111 }); // 2
-	_vertices.push_back({ v011 }); // 3
+	const glm::vec2 texCoords[4] = {
+		glm::vec2(0.0f, 0.0f), // Bottom left
+		glm::vec2(1.0f, 0.0f), // Bottom right
+		glm::vec2(1.0f, 1.0f), // Top right
+		glm::vec2(0.0f, 1.0f)  // Top left
+	};
 
-	// Back face (-Z)
-	_vertices.push_back({ v100 }); // 4
-	_vertices.push_back({ v000 }); // 5
-	_vertices.push_back({ v010 }); // 6
-	_vertices.push_back({ v110 }); // 7
+	// Face definitions: position and normal index
+	const glm::vec3 facePositions[6][4] = {
+		{v001, v101, v111, v011}, // Front (+Z)
+		{v100, v000, v010, v110}, // Back (-Z)
+		{v101, v100, v110, v111}, // Right (+X)
+		{v000, v001, v011, v010}, // Left (-X)
+		{v011, v111, v110, v010}, // Top (+Y)
+		{v000, v100, v101, v001}  // Bottom (-Y)
+	};
 
-	// Right face (+X)
-	_vertices.push_back({ v101 }); // 8
-	_vertices.push_back({ v100 }); // 9
-	_vertices.push_back({ v110 }); // 10
-	_vertices.push_back({ v111 }); // 11
 
-	// Left face (-X)
-	_vertices.push_back({ v000 }); // 12
-	_vertices.push_back({ v001 }); // 13
-	_vertices.push_back({ v011 }); // 14
-	_vertices.push_back({ v010 }); // 15
-
-	// Top face (+Y)
-	_vertices.push_back({ v011 }); // 16
-	_vertices.push_back({ v111 }); // 17
-	_vertices.push_back({ v110 }); // 18
-	_vertices.push_back({ v010 }); // 19
-
-	// Bottom face (-Y)
-	_vertices.push_back({ v000 }); // 20
-	_vertices.push_back({ v100 }); // 21
-	_vertices.push_back({ v101 }); // 22
-	_vertices.push_back({ v001 }); // 23
-
-	// Normals for each vertex
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));  // Cara frontal
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f)); // Cara trasera
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));  // Cara derecha
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f)); // Cara izquierda
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f));  // Cara superior
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f)); // Cara inferior
-
-	// tex coords for each face
-	for (int i = 0; i < 6; i++) {
-		_texCoords.push_back(glm::vec2(0.0f, 0.0f)); // Bottom left corner
-		_texCoords.push_back(glm::vec2(1.0f, 0.0f)); // Bottom right corner
-		_texCoords.push_back(glm::vec2(1.0f, 1.0f)); // Top right corner
-		_texCoords.push_back(glm::vec2(0.0f, 1.0f)); // Top left corner
+	for (int face = 0; face < 6; face++) {
+		for (int vert = 0; vert < 4; vert++) {
+			Vertex vertex;
+			vertex.Position = facePositions[face][vert];
+			vertex.Normal = normals[face];
+			vertex.texCoord = texCoords[vert];
+			_vertices.push_back(vertex);
+		}
 	}
 
-
-
-	// indices for each face (2 triangles per face)
+	// Build indices (2 triangles per face)
 	for (int i = 0; i < 6; i++) {
 		int base = i * 4;
-		_indices.push_back(base);     // 0
-		_indices.push_back(base + 1); // 1
-		_indices.push_back(base + 2); // 2
-		
-		_indices.push_back(base);     // 0
-		_indices.push_back(base + 2); // 2
-		_indices.push_back(base + 3); // 3
+		_indices.push_back(base);
+		_indices.push_back(base + 1);
+		_indices.push_back(base + 2);
+
+		_indices.push_back(base);
+		_indices.push_back(base + 2);
+		_indices.push_back(base + 3);
 	}
 
-	// Assign data to model
+	// Create mesh
+	Mesh cubeMesh(_vertices, _indices, _textures);
 
-	Mesh* cubeMesh = new Mesh(_vertices, _indices, _textures);
+	// Create model from mesh
+	Model* cubeModel = new Model(cubeMesh);
 
-	//we probably need a function to create a model without a path
-	Model* cubeModel = new Model(*cubeMesh);
-
-	//add model and game object
+	// Add to manager
 	modelObjects.push_back(cubeModel);
 	Application::GetInstance().guiManager.get()->AddGameObject(cubeModel);
+	cubeModel->GetRootGameObject().get()->SetName("Cube");
 
-	/*Application::GetInstance().render.get()->AddModel(cubeMesh);*/
 	return *cubeModel;
-
-
 }
 
 void OpenGL::FocusObject() {

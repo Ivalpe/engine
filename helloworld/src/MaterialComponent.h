@@ -27,10 +27,13 @@ public:
     void SetRoughness(float rough) { roughness = rough; }
     float GetRoughness() const { return roughness; }
 
+    /*void SetTexture();*/
+
 private:
     // Material properties
     glm::vec4 color;
     float shininess;
     float metallic;
     float roughness;
+    
 };

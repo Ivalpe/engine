@@ -24,7 +24,10 @@ public:
 
     std::vector<std::shared_ptr<GameObject>>& GetGameObjects() { return gameObjects; }
 
-    shared_ptr<GameObject> GetRootGameObject() const { return rootGameObject; }
+    shared_ptr<GameObject> GetRootGameObject() const 
+    { 
+        return rootGameObject; 
+    }
     
     std::string directory;
     int processedMeshes = 0;
@@ -50,9 +53,4 @@ public:
 
     void LogGameObjectHierarchy(std::shared_ptr<GameObject>  go, int depth);
 
-    
-    
-    
-
-    
 };

@@ -4,7 +4,9 @@
 #include "GUIManager.h"
 #include "Log.h"
 #include "OpenGL.h"
-
+#include "GameObject.h"
+#include "Component.h"
+#include "RenderMeshComponent.h"
 #include <string>
 #include <filesystem>
 #include <fstream>
@@ -17,7 +19,7 @@
 
 
 using namespace std;
-
+class RenderMeshComponent;
 
 Input::Input() : Module()
 {
@@ -150,7 +152,8 @@ bool Input::PreUpdate()
 			/*windowID = Application::GetInstance().window.get()->GetWindowID();*/
 			droppedFileDir = event.drop.data;
 			
-			LOG("Dropped File Directory = %s", droppedFileDir);
+			
+			
 
 			ProcessDroppedFile(droppedFileDir);
 			
@@ -187,9 +190,12 @@ bool Input::CleanUp()
 	return true;
 }
 
-void Input::ProcessDroppedFile(const std::string sourcePath) {
+void Input::ProcessDroppedFile(std::string sourcePath) {
 
+	std::replace(sourcePath.begin(), sourcePath.end(), '\\', '/');
 
+	LOG("Dropped File Directory = %s", sourcePath.c_str());
+		
 	//find last dot of directory to get file extension (.fbx, .obj, .png, .jpg, etc)
 
 	//handle model files
@@ -197,23 +203,64 @@ void Input::ProcessDroppedFile(const std::string sourcePath) {
 	if (fileExtension == "fbx" || fileExtension == "FBX" || fileExtension == "obj") {
 		importedModel = new Model(droppedFileDir);
 		Application::GetInstance().render.get()->AddModel(*importedModel);
+		
 	}
 
 	//handle image files
-	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga") {
-		//detect if mouse is over a mesh and which one
-		glm::mat4 projMat = Application::GetInstance().openGL.get()->projectionMat;
-		glm::mat4 viewMat = Application::GetInstance().openGL.get()->viewMat;
-		glm::vec3 mouseRayDir = MouseRay(mouseX, mouseY, projMat, viewMat);
-		
-		/*Application::GetInstance().render.get()->modelsToDraw()[]*/
-		
-		//if it is, change current material's texture for the dropped texture
-	}
+	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga" || fileExtension == "dds") {
+		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager.get()->selectedObject;
+		if (selectedObj) {
+			if (selectedObj->GetName() == "RootNode") {
+				LOG("You can't add a texture to the Root Node. Select another GameObject from the hierarchy and try again");
+				return;
+			}
 
-	//try {
-	//	std::filesystem::copy(sourcePath, destPath);
-	//}
+			auto renderMeshComp = std::dynamic_pointer_cast<RenderMeshComponent>(selectedObj->GetComponent(ComponentType::MESH_RENDERER));
+
+			if (renderMeshComp == nullptr) {
+				LOG("No RenderMeshComponent found on selected GameObject");
+				return;
+			}
+
+			auto mesh = renderMeshComp->GetMesh();
+			if (mesh == nullptr) {
+				LOG("No mesh found in RenderMeshComponent");
+				return;
+			}
+
+			// Get REFERENCE to the actual textures vector in the mesh
+			vector<Texture>& meshTextures = mesh->textures;
+
+			// Load dragged texture
+			Texture droppedTex;
+			string fileName = sourcePath.substr(sourcePath.find_last_of('/') + 1);
+			droppedTex.TextureFromFile(sourcePath, fileName.c_str());
+			droppedTex.mapType = "texture_diffuse"; // Default to diffuse
+			droppedTex.path = sourcePath;
+
+			// Find and replace existing diffuse texture, or add new one
+			bool replaced = false;
+			for (auto& t : meshTextures) { 
+				if (t.mapType == "texture_diffuse") {
+					t = droppedTex;
+					replaced = true;
+					LOG("Replaced existing diffuse texture");
+					break;
+				}
+			}
+
+			if (!replaced) {
+				meshTextures.push_back(droppedTex);
+				LOG("Added new diffuse texture");
+			}
+
+			Application::GetInstance().textures.get()->textures_loaded.push_back(droppedTex);
+			LOG("Texture '%s' applied to '%s'", fileName.c_str(), selectedObj->GetName().c_str());
+		}
+		else {
+			LOG("No GameObject Selected. Select a GameObject in the hierarchy and try again");
+		}
+	}
 	
 	
 }

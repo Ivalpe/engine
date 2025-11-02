@@ -2,6 +2,9 @@
 
 #include "Module.h"
 #include <string>
+#include <vector>
+
+using namespace std;
 
 
 class Texture : public Module
@@ -28,5 +31,7 @@ public:
 	std::string mapType;
 	std::string path;
 	int texW, texH;
+
+	std::vector<Texture> textures_loaded;
 	
 };
