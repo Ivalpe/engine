@@ -58,7 +58,7 @@ public:
 		return mouseButtons[id - 1];
 	}
 
-	void ProcessDroppedFile(const std::string sourcePath);
+	void ProcessDroppedFile(std::string sourcePath);
 
 	glm::vec3 MouseRay(int mouseX, int mouseY, const glm::mat4& projection, const glm::mat4& view);
 
@@ -69,6 +69,7 @@ public:
 	SDL_FPoint GetMousePosition();
 	SDL_FPoint GetMouseMotion();
 	Model* importedModel;
+	
 
 
 	int GetMouseWheelDeltaY() const { return mouseWheelY; }

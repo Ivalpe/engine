@@ -8,6 +8,7 @@
 #include "stb_image.h"
 #include "Model.h"
 #include "Input.h"
+#include "Camera.h"
 #include "GUIManager.h"
 
 OpenGL::OpenGL() : Module()
@@ -38,6 +39,9 @@ bool OpenGL::Start() {
 		LOG("Error loading the glad library");
 		return false;
 	}
+
+	viewMat = Application::GetInstance().camera->viewMat;
+	projectionMat = Application::GetInstance().camera->projectionMat;
 
 	/*stbi_set_flip_vertically_on_load(true);*/
 
@@ -94,20 +98,8 @@ bool OpenGL::Start() {
 
 	ourModel = new Model(modelPath.c_str());
 	modelObjects.push_back(ourModel);
-
+	Application::GetInstance().guiManager.get()->AddGameObject(ourModel);
 	Application::GetInstance().render.get()->AddModel(*ourModel);
-
-
-	/*Model defaultCube = CreateCube();
-	Application::GetInstance().render.get()->AddModel(defaultCube);*/
-
-	cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-	cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-	cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-	targetPos = glm::vec3(0.0f, 0.0f, 0.0f);
-	distance = glm::length(cameraPos - targetPos);
-
 
 	viewMat = glm::mat4(1.0f);
 
@@ -134,88 +126,15 @@ bool OpenGL::Update(float dt) {
 
 	//use shader's line color instead of texture
 	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), true);
-
 	glUniform4f(glGetUniformLocation(texCoordsShader->ID, "lineColor"), 1.0f, 1.0f, 1.0f, 0.5f); //white grid
-
-
 
 	Application::GetInstance().render.get()->DrawGrid();
 
 	// Restore to normal texture mode
 	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), false);
 
-	//camera controls
-	float cameraSpeed;
-
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LSHIFT) == KEY_REPEAT)
-		cameraSpeed = 0.20f;
-	else
-		cameraSpeed = 0.05f;
-
-	xpos = Application::GetInstance().input.get()->GetMousePosition().x;
-	ypos = Application::GetInstance().input.get()->GetMousePosition().y;
-	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos;
-
-	//Right Click
-	if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_REPEAT &&
-		Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) != KEY_REPEAT)
-	{
-		ProcessKeyboardMovement(cameraSpeed);
-		ProcessMouseRotation(xoffset, yoffset, 0.1f);
-		UpdateCameraVectors();
-
-		targetPos = cameraPos + cameraFront * distance;
-	}
-
-	if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_UP &&
-		Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_UP &&
-		Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_MIDDLE) == KEY_UP)
-		firstMouse = true;
-
-
-
-	//Alt + mouse
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
-	{
-		if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_REPEAT) // Orbitar
-		{
-			ProcessMouseRotation(xoffset, yoffset, 0.3f);
-		}
-		else if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_MIDDLE) == KEY_REPEAT) // Pan
-		{
-			ProcessPan(xoffset, -yoffset);
-		}
-		else if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_REPEAT) // Dolly
-		{
-			float combinedDelta = xoffset - yoffset;
-			ProcessScrollZoom(combinedDelta, false);
-			cameraPos = targetPos - cameraFront * distance;
-		}
-	}
-
-	lastX = xpos;
-	lastY = ypos;
-
-	// Mouse Wheel
-	float wheelDelta = Application::GetInstance().input.get()->GetMouseWheelDeltaY();
-	if (wheelDelta != 0.0f)
-	{
-		ProcessScrollZoom(wheelDelta, true);
-		if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
-		{
-			cameraPos = targetPos - cameraFront * distance;
-		}
-	}
-	Application::GetInstance().input.get()->SetMouseWheelDeltaY(0);
-
-	FocusObject();
-	UpdateCameraVectors();
-
-	float aspectRatio = (float)Application::GetInstance().window.get()->width / (float)Application::GetInstance().window.get()->height;
-	projectionMat = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 100.0f);
-	viewMat = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+	viewMat = Application::GetInstance().camera->viewMat;
+	projectionMat = Application::GetInstance().camera->projectionMat;
 
 	texCoordsShader->Use();
 	texCoordsShader->setMat4("model", modelMat);
@@ -240,229 +159,82 @@ bool OpenGL::CleanUp() {
 	return true;
 }
 
-void OpenGL::ProcessMouseRotation(float xoffset, float yoffset, float sensitivity)
-{
-	if (firstMouse)
-	{
-		lastX = Application::GetInstance().input.get()->GetMousePosition().x;
-		lastY = Application::GetInstance().input.get()->GetMousePosition().y;
-		firstMouse = false;
-		return;
-	}
-
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-
-	yaw += xoffset;
-	pitch += yoffset;
-
-
-	if (pitch > 89.0f) pitch = 89.0f;
-	if (pitch < -89.0f) pitch = -89.0f;
-
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
-	{
-		UpdateCameraVectors();
-		cameraPos = targetPos - cameraFront * distance;
-	}
-}
-
-void OpenGL::UpdateCameraVectors()
-{
-	glm::vec3 direction;
-	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	direction.y = sin(glm::radians(pitch));
-	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront = glm::normalize(direction);
-}
-
-void OpenGL::ProcessKeyboardMovement(float actualSpeed)
-{
-	glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
-	glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_W) == KEY_REPEAT)
-		cameraPos += actualSpeed * cameraFront;
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_S) == KEY_REPEAT)
-		cameraPos -= actualSpeed * cameraFront;
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_D) == KEY_REPEAT)
-		cameraPos += cameraRight * actualSpeed;
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_A) == KEY_REPEAT)
-		cameraPos -= cameraRight * actualSpeed;
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_E) == KEY_REPEAT)
-		cameraPos += worldUp * actualSpeed;
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_Q) == KEY_REPEAT)
-		cameraPos -= worldUp * actualSpeed;
-}
-
-void OpenGL::ProcessPan(float xoffset, float yoffset)
-{
-	float panSpeed = 0.01f * distance;
-
-	glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
-	glm::vec3 cameraUpVector = glm::normalize(glm::cross(cameraRight, cameraFront));
-
-	targetPos -= cameraRight * xoffset * panSpeed;
-	targetPos += cameraUpVector * yoffset * panSpeed;
-	cameraPos = targetPos - cameraFront * distance;
-}
-
-void OpenGL::ProcessDolly(float xoffset, float yoffset)
-{
-	float combinedOffset = xoffset - yoffset;
-	float dollySpeed = 0.01f * distance;
-	distance -= combinedOffset * dollySpeed;
-	if (distance < 0.1f) distance = 0.1f;
-}
-
-void OpenGL::ProcessScrollZoom(float delta, bool isMouseScroll)
-{
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT || !isMouseScroll) {
-
-		float dollyMultiplier = isMouseScroll ? 0.5f : (0.01f * distance);
-		distance -= delta * dollyMultiplier;
-
-		if (distance < 0.1f)
-			distance = 0.1f;
-	}
-	else {
-		float zoomSpeed = 5.0f;
-		fov -= delta * zoomSpeed;
-		if (fov < 1.0f) fov = 1.0f;
-		if (fov > 90.0f) fov = 90.0f;
-	}
-}
-
 
 Model OpenGL::CreateCube() {
-
-	const glm::vec3 v000(-1.0f, -1.0f, -1.0f);
-	const glm::vec3 v001(-1.0f, -1.0f, 1.0f);
-	const glm::vec3 v010(-1.0f, 1.0f, -1.0f);
-	const glm::vec3 v011(-1.0f, 1.0f, 1.0f);
-	const glm::vec3 v100(1.0f, -1.0f, -1.0f);
-	const glm::vec3 v101(1.0f, -1.0f, 1.0f);
-	const glm::vec3 v110(1.0f, 1.0f, -1.0f);
-	const glm::vec3 v111(1.0f, 1.0f, 1.0f);
-
+	const glm::vec3 v000(-0.5f, -0.5f, -0.5f);
+	const glm::vec3 v001(-0.5f, -0.5f, 0.5f);
+	const glm::vec3 v010(-0.5f, 0.5f, -0.5f);
+	const glm::vec3 v011(-0.5f, 0.5f, 0.5f);
+	const glm::vec3 v100(0.5f, -0.5f, -0.5f);
+	const glm::vec3 v101(0.5f, -0.5f, 0.5f);
+	const glm::vec3 v110(0.5f, 0.5f, -0.5f);
+	const glm::vec3 v111(0.5f, 0.5f, 0.5f);
 
 	std::vector<Vertex> _vertices;
 	std::vector<unsigned int> _indices;
-	std::vector<glm::vec3> _normals;
-	std::vector<glm::vec2> _texCoords;
 	std::vector<Texture> _textures;
 
+	// Helper arrays for normals and texcoords
+	const glm::vec3 normals[6] = {
+		glm::vec3(0.0f, 0.0f, 1.0f),   // Front
+		glm::vec3(0.0f, 0.0f, -1.0f),  // Back
+		glm::vec3(1.0f, 0.0f, 0.0f),   // Right
+		glm::vec3(-1.0f, 0.0f, 0.0f),  // Left
+		glm::vec3(0.0f, 1.0f, 0.0f),   // Top
+		glm::vec3(0.0f, -1.0f, 0.0f)   // Bottom
+	};
 
-	// Frontal face (+Z)
-	_vertices.push_back({ v001 }); // 0
-	_vertices.push_back({ v101 }); // 1
-	_vertices.push_back({ v111 }); // 2
-	_vertices.push_back({ v011 }); // 3
+	const glm::vec2 texCoords[4] = {
+		glm::vec2(0.0f, 0.0f), // Bottom left
+		glm::vec2(1.0f, 0.0f), // Bottom right
+		glm::vec2(1.0f, 1.0f), // Top right
+		glm::vec2(0.0f, 1.0f)  // Top left
+	};
 
-	// Back face (-Z)
-	_vertices.push_back({ v100 }); // 4
-	_vertices.push_back({ v000 }); // 5
-	_vertices.push_back({ v010 }); // 6
-	_vertices.push_back({ v110 }); // 7
-
-	// Right face (+X)
-	_vertices.push_back({ v101 }); // 8
-	_vertices.push_back({ v100 }); // 9
-	_vertices.push_back({ v110 }); // 10
-	_vertices.push_back({ v111 }); // 11
-
-	// Left face (-X)
-	_vertices.push_back({ v000 }); // 12
-	_vertices.push_back({ v001 }); // 13
-	_vertices.push_back({ v011 }); // 14
-	_vertices.push_back({ v010 }); // 15
-
-	// Top face (+Y)
-	_vertices.push_back({ v011 }); // 16
-	_vertices.push_back({ v111 }); // 17
-	_vertices.push_back({ v110 }); // 18
-	_vertices.push_back({ v010 }); // 19
-
-	// Bottom face (-Y)
-	_vertices.push_back({ v000 }); // 20
-	_vertices.push_back({ v100 }); // 21
-	_vertices.push_back({ v101 }); // 22
-	_vertices.push_back({ v001 }); // 23
-
-	// Normals for each vertex
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, 0.0f, 1.0f));  // Cara frontal
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, 0.0f, -1.0f)); // Cara trasera
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(1.0f, 0.0f, 0.0f));  // Cara derecha
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(-1.0f, 0.0f, 0.0f)); // Cara izquierda
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, 1.0f, 0.0f));  // Cara superior
-	for (int i = 0; i < 4; i++) _normals.push_back(glm::vec3(0.0f, -1.0f, 0.0f)); // Cara inferior
-
-	// tex coords for each face
-	for (int i = 0; i < 6; i++) {
-		_texCoords.push_back(glm::vec2(0.0f, 0.0f)); // Bottom left corner
-		_texCoords.push_back(glm::vec2(1.0f, 0.0f)); // Bottom right corner
-		_texCoords.push_back(glm::vec2(1.0f, 1.0f)); // Top right corner
-		_texCoords.push_back(glm::vec2(0.0f, 1.0f)); // Top left corner
-	}
+	// Face definitions: position and normal index
+	const glm::vec3 facePositions[6][4] = {
+		{v001, v101, v111, v011}, // Front (+Z)
+		{v100, v000, v010, v110}, // Back (-Z)
+		{v101, v100, v110, v111}, // Right (+X)
+		{v000, v001, v011, v010}, // Left (-X)
+		{v011, v111, v110, v010}, // Top (+Y)
+		{v000, v100, v101, v001}  // Bottom (-Y)
+	};
 
 
-
-	// indices for each face (2 triangles per face)
-	for (int i = 0; i < 6; i++) {
-		int base = i * 4;
-		_indices.push_back(base);     // 0
-		_indices.push_back(base + 1); // 1
-		_indices.push_back(base + 2); // 2
-		
-		_indices.push_back(base);     // 0
-		_indices.push_back(base + 2); // 2
-		_indices.push_back(base + 3); // 3
-	}
-
-	// Assign data to model
-
-	Mesh* cubeMesh = new Mesh(_vertices, _indices, _textures);
-
-	//we probably need a function to create a model without a path
-	Model* cubeModel = new Model(*cubeMesh);
-
-	//add model and game object
-	modelObjects.push_back(cubeModel);
-	Application::GetInstance().guiManager.get()->AddGameObject(cubeModel);
-
-	/*Application::GetInstance().render.get()->AddModel(cubeMesh);*/
-	return *cubeModel;
-
-
-}
-
-void OpenGL::FocusObject() {
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_F) == KEY_DOWN)
-	{
-		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager->selectedObject;
-		if (selectedObj)
-		{
-			auto transformComp = std::dynamic_pointer_cast<TransformComponent>(
-				selectedObj->GetComponent(ComponentType::TRANSFORM)
-			);
-
-			if (transformComp)
-			{
-				glm::vec3 targetPosition = transformComp->GetWorldPosition();
-
-				UpdateCameraVectors();
-				const float focusDistance = 7.0f;
-				const float heightOffset = 1.0f;
-
-				cameraPos = targetPosition - cameraFront * focusDistance + glm::vec3(0, heightOffset, 0);
-
-				targetPos = targetPosition;
-				distance = glm::length(cameraPos - targetPos);
-			}
+	for (int face = 0; face < 6; face++) {
+		for (int vert = 0; vert < 4; vert++) {
+			Vertex vertex;
+			vertex.Position = facePositions[face][vert];
+			vertex.Normal = normals[face];
+			vertex.texCoord = texCoords[vert];
+			_vertices.push_back(vertex);
 		}
 	}
-}
 
+	// Build indices (2 triangles per face)
+	for (int i = 0; i < 6; i++) {
+		int base = i * 4;
+		_indices.push_back(base);
+		_indices.push_back(base + 1);
+		_indices.push_back(base + 2);
+
+		_indices.push_back(base);
+		_indices.push_back(base + 2);
+		_indices.push_back(base + 3);
+	}
+
+	// Create mesh
+	Mesh cubeMesh(_vertices, _indices, _textures);
+
+	// Create model from mesh
+	Model* cubeModel = new Model(cubeMesh);
+
+	// Add to manager
+	modelObjects.push_back(cubeModel);
+	Application::GetInstance().guiManager.get()->AddGameObject(cubeModel);
+	cubeModel->GetRootGameObject().get()->SetName("Cube");
+
+	return *cubeModel;
+
+}

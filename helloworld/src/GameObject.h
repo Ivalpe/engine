@@ -43,6 +43,7 @@ public:
     bool IsMarkedForDestroy() const { return markedForDestroy; }
     void MarkForDestroy() { markedForDestroy = true; }
 
+
 private:
     std::string name;
     bool active = true;

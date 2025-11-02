@@ -1,8 +1,10 @@
 #pragma once
 #include "Component.h"
 #include "Mesh.h"  
+#include "MaterialComponent.h"
 
 class Shader;  // Forward declaration
+
 
 class RenderMeshComponent : public Component {
 public:
@@ -21,9 +23,6 @@ public:
 
     // Rendering
     void Render(Shader* shader);  
-
-    // Drawing properties
-    void DrawNormals();
 
 private:
     std::shared_ptr<Mesh> mesh;  // Pointer to mesh data (not owned by this component)

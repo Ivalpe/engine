@@ -24,9 +24,12 @@ public:
 
     std::vector<std::shared_ptr<GameObject>>& GetGameObjects() { return gameObjects; }
 
-    shared_ptr<GameObject> GetRootGameObject() const { return rootGameObject; }
+    shared_ptr<GameObject> GetRootGameObject() const 
+    { 
+        return rootGameObject; 
+    }
     
-    std::string directory;
+    std::string fileName, fileExtension, directory;
     int processedMeshes = 0;
 
     std::string fullPath;
@@ -40,10 +43,13 @@ public:
     void createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMesh* aiMesh, const aiScene* scene);
 
     vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName);
+    Texture GetOrLoadTexture(const string& fullPath, const string& fileName, const string& typeName);
+    void AssignDefaultTexture(std::vector<Texture>& textures);
 
     void LogGameObjectHierarchy(std::shared_ptr<GameObject>  go, int depth);
 
     void DestroyGameObject(std::shared_ptr<GameObject> gameObject);
     void CleanUpDestroyedObjects();
     std::shared_ptr<GameObject> CreateEmptyGameObject(const std::string& name, std::shared_ptr<GameObject> parent = nullptr);
+
 };
