@@ -25,7 +25,7 @@ An in-depth paragraph about your project and overview of use.
 * Scroll Zoom: Use the Mouse Wheel.
 * Focus on Selected Object: Press F.
 
-### Options and Settings
+### GUI and Settings
 
 * File -> Exit: Exit the program
 * View: Toggle on/off viewing different GUI windows
