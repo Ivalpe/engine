@@ -11,6 +11,7 @@
 #include "imgui_internal.h" 
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_opengl3.h>
+#include "Camera.h"
 
 GUIManager::GUIManager() : Module(), AdditionalElements(ElementType::Additional, this), Menu(ElementType::MenuBar, this), sceneObjects(), selectedObject(nullptr)
 {
@@ -98,6 +99,7 @@ bool GUIManager::Update(float dt)
 			sceneObjects.push_back(m->rootGameObject);
 		}
 		objectsInitialized = true;
+		//Application::GetInstance().camera->FocusObject(true);
 	}
 	
 	//Start the ImGui frame
