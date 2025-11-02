@@ -8,6 +8,7 @@
 #include "stb_image.h"
 #include "Model.h"
 #include "Input.h"
+#include "Camera.h"
 #include "GUIManager.h"
 
 OpenGL::OpenGL() : Module()
@@ -38,6 +39,9 @@ bool OpenGL::Start() {
 		LOG("Error loading the glad library");
 		return false;
 	}
+
+	viewMat = Application::GetInstance().camera->viewMat;
+	projectionMat = Application::GetInstance().camera->projectionMat;
 
 	/*stbi_set_flip_vertically_on_load(true);*/
 
@@ -101,13 +105,6 @@ bool OpenGL::Start() {
 	/*Model defaultCube = CreateCube();
 	Application::GetInstance().render.get()->AddModel(defaultCube);*/
 
-	cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-	cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-	cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-	targetPos = glm::vec3(0.0f, 0.0f, 0.0f);
-	distance = glm::length(cameraPos - targetPos);
-
 
 	viewMat = glm::mat4(1.0f);
 
@@ -144,78 +141,8 @@ bool OpenGL::Update(float dt) {
 	// Restore to normal texture mode
 	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), false);
 
-	//camera controls
-	float cameraSpeed;
-
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LSHIFT) == KEY_REPEAT)
-		cameraSpeed = 0.20f;
-	else
-		cameraSpeed = 0.05f;
-
-	xpos = Application::GetInstance().input.get()->GetMousePosition().x;
-	ypos = Application::GetInstance().input.get()->GetMousePosition().y;
-	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos;
-
-	//Right Click
-	if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_REPEAT &&
-		Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) != KEY_REPEAT)
-	{
-		ProcessKeyboardMovement(cameraSpeed);
-		ProcessMouseRotation(xoffset, yoffset, 0.1f);
-		UpdateCameraVectors();
-
-		targetPos = cameraPos + cameraFront * distance;
-	}
-
-	if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_UP &&
-		Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_UP &&
-		Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_MIDDLE) == KEY_UP)
-		firstMouse = true;
-
-
-
-	//Alt + mouse
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
-	{
-		if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_REPEAT) // Orbitar
-		{
-			ProcessMouseRotation(xoffset, yoffset, 0.3f);
-		}
-		else if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_MIDDLE) == KEY_REPEAT) // Pan
-		{
-			ProcessPan(xoffset, -yoffset);
-		}
-		else if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_REPEAT) // Dolly
-		{
-			float combinedDelta = xoffset - yoffset;
-			ProcessScrollZoom(combinedDelta, false);
-			cameraPos = targetPos - cameraFront * distance;
-		}
-	}
-
-	lastX = xpos;
-	lastY = ypos;
-
-	// Mouse Wheel
-	float wheelDelta = Application::GetInstance().input.get()->GetMouseWheelDeltaY();
-	if (wheelDelta != 0.0f)
-	{
-		ProcessScrollZoom(wheelDelta, true);
-		if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
-		{
-			cameraPos = targetPos - cameraFront * distance;
-		}
-	}
-	Application::GetInstance().input.get()->SetMouseWheelDeltaY(0);
-
-	FocusObject();
-	UpdateCameraVectors();
-
-	float aspectRatio = (float)Application::GetInstance().window.get()->width / (float)Application::GetInstance().window.get()->height;
-	projectionMat = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 100.0f);
-	viewMat = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+	viewMat = Application::GetInstance().camera->viewMat;
+	projectionMat = Application::GetInstance().camera->projectionMat;
 
 	texCoordsShader->Use();
 	texCoordsShader->setMat4("model", modelMat);
@@ -238,102 +165,6 @@ bool OpenGL::CleanUp() {
 	glDeleteVertexArrays(1, &VAO);
 
 	return true;
-}
-
-void OpenGL::ProcessMouseRotation(float xoffset, float yoffset, float sensitivity)
-{
-	if (firstMouse)
-	{
-		lastX = Application::GetInstance().input.get()->GetMousePosition().x;
-		lastY = Application::GetInstance().input.get()->GetMousePosition().y;
-		firstMouse = false;
-		return;
-	}
-
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-
-	yaw += xoffset;
-	pitch += yoffset;
-
-
-	if (pitch > 89.0f) pitch = 89.0f;
-	if (pitch < -89.0f) pitch = -89.0f;
-
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
-	{
-		UpdateCameraVectors();
-		cameraPos = targetPos - cameraFront * distance;
-	}
-}
-
-void OpenGL::UpdateCameraVectors()
-{
-	glm::vec3 direction;
-	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	direction.y = sin(glm::radians(pitch));
-	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront = glm::normalize(direction);
-}
-
-void OpenGL::ProcessKeyboardMovement(float actualSpeed)
-{
-	glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
-	glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_W) == KEY_REPEAT)
-		cameraPos += actualSpeed * cameraFront;
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_S) == KEY_REPEAT)
-		cameraPos -= actualSpeed * cameraFront;
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_D) == KEY_REPEAT)
-		cameraPos += cameraRight * actualSpeed;
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_A) == KEY_REPEAT)
-		cameraPos -= cameraRight * actualSpeed;
-
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_E) == KEY_REPEAT)
-		cameraPos += worldUp * actualSpeed;
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_Q) == KEY_REPEAT)
-		cameraPos -= worldUp * actualSpeed;
-}
-
-void OpenGL::ProcessPan(float xoffset, float yoffset)
-{
-	float panSpeed = 0.01f * distance;
-
-	glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
-	glm::vec3 cameraUpVector = glm::normalize(glm::cross(cameraRight, cameraFront));
-
-	targetPos -= cameraRight * xoffset * panSpeed;
-	targetPos += cameraUpVector * yoffset * panSpeed;
-	cameraPos = targetPos - cameraFront * distance;
-}
-
-void OpenGL::ProcessDolly(float xoffset, float yoffset)
-{
-	float combinedOffset = xoffset - yoffset;
-	float dollySpeed = 0.01f * distance;
-	distance -= combinedOffset * dollySpeed;
-	if (distance < 0.1f) distance = 0.1f;
-}
-
-void OpenGL::ProcessScrollZoom(float delta, bool isMouseScroll)
-{
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT || !isMouseScroll) {
-
-		float dollyMultiplier = isMouseScroll ? 0.5f : (0.01f * distance);
-		distance -= delta * dollyMultiplier;
-
-		if (distance < 0.1f)
-			distance = 0.1f;
-	}
-	else {
-		float zoomSpeed = 5.0f;
-		fov -= delta * zoomSpeed;
-		if (fov < 1.0f) fov = 1.0f;
-		if (fov > 90.0f) fov = 90.0f;
-	}
 }
 
 
@@ -436,33 +267,4 @@ Model OpenGL::CreateCube() {
 	/*Application::GetInstance().render.get()->AddModel(cubeMesh);*/
 	return *cubeModel;
 
-
 }
-
-void OpenGL::FocusObject() {
-	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_F) == KEY_DOWN)
-	{
-		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager->selectedObject;
-		if (selectedObj)
-		{
-			auto transformComp = std::dynamic_pointer_cast<TransformComponent>(
-				selectedObj->GetComponent(ComponentType::TRANSFORM)
-			);
-
-			if (transformComp)
-			{
-				glm::vec3 targetPosition = transformComp->GetWorldPosition();
-
-				UpdateCameraVectors();
-				const float focusDistance = 7.0f;
-				const float heightOffset = 1.0f;
-
-				cameraPos = targetPosition - cameraFront * focusDistance + glm::vec3(0, heightOffset, 0);
-
-				targetPos = targetPosition;
-				distance = glm::length(cameraPos - targetPos);
-			}
-		}
-	}
-}
-
