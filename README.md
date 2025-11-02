@@ -52,12 +52,12 @@ Including an orbital camera and a basic editor for easier use, this version cons
   * -> Latest Release: opens the project's [Releases](https://github.com/KaiCaire/vroom-engine/releases) page
   * -> About: opens window with information about the program
 
-Additional Actions
+### Additional Actions
 
 * 3D models Drag & Drop (.fbx/.obj) from any File Explorer directory
 * Texture Drag & Drop (.png/.jpg/.tga/.dds) onto selected GameObjects from the Inspector
 
-Additional Features
+## Additional Features
 
 * Rename selected GameObject
 * Delete GameObjects
