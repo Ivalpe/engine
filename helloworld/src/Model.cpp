@@ -116,8 +116,26 @@ Model::Model(Mesh mesh) {
 }
 
 void Model::Draw(Shader& shader) {
-    for (auto& mesh : meshes)
-        mesh->Draw(shader);
+    /*for (auto& mesh : meshes)
+        mesh->Draw(shader);*/
+
+    for (auto& gameObject : gameObjects) {
+        // Skip destroyed or inactive GameObjects
+        if (!gameObject || gameObject->IsMarkedForDestroy() || !gameObject->IsActive())
+            continue;
+
+        // Check if this GameObject has a MeshRenderer
+        auto rendererComp = gameObject->GetComponent(ComponentType::MESH_RENDERER);
+        if (!rendererComp)
+            continue;
+
+        auto renderer = std::dynamic_pointer_cast<RenderMeshComponent>(rendererComp);
+        if (!renderer || !renderer->GetMesh())
+            continue;
+
+        // Draw the mesh
+        renderer->GetMesh()->Draw(shader);
+    }
 }
 
 void Model::processNodeWithGameObjects(aiNode* node, const aiScene* scene, shared_ptr<GameObject> parent) {
@@ -381,6 +399,87 @@ void Model::LogGameObjectHierarchy(shared_ptr<GameObject> go, int depth) {
         LogGameObjectHierarchy(child, depth + 1);
 }
 
+
+void Model::DestroyGameObject(std::shared_ptr<GameObject> gameObject) {
+    if (!gameObject) {
+        LOG("WARNING: Attempted to destroy null GameObject");
+        return;
+    }
+
+    LOG("Destroying GameObject '%s'", gameObject->GetName().c_str());
+
+    // Marcar este GameObject
+    gameObject->MarkForDestroy();
+
+    // Lambda recursiva sin std::function
+    auto markChildren = [&](auto&& self, std::shared_ptr<GameObject> go) -> void {
+        for (auto& child : go->GetChildren()) {
+            if (child && !child->IsMarkedForDestroy()) {
+                LOG("  - Marking child '%s' for destruction", child->GetName().c_str());
+                child->MarkForDestroy();
+                self(self, child);  // recursi�n
+            }
+        }
+        };
+
+    // Llamar con la funci�n y el objeto ra�z
+    markChildren(markChildren, gameObject);
+
+    // Desconectar del padre
+    if (auto parent = gameObject->GetParent()) {
+        parent->RemoveChild(gameObject);
+        LOG("  - Disconnected from parent '%s'", parent->GetName().c_str());
+    }
+}
+
+void Model::CleanUpDestroyedObjects() {
+    size_t beforeCount = gameObjects.size();
+
+    // Eliminar GameObjects marcados
+    gameObjects.erase(
+        std::remove_if(gameObjects.begin(), gameObjects.end(),
+            [](const std::shared_ptr<GameObject>& go) {
+                return go && go->IsMarkedForDestroy();
+            }),
+        gameObjects.end()
+    );
+
+    size_t afterCount = gameObjects.size();
+    if (beforeCount != afterCount) {
+        LOG("Cleanup: Removed %d GameObject(s). Remaining: %d",
+            (int)(beforeCount - afterCount), (int)afterCount);
+    }
+}
+
+std::shared_ptr<GameObject> Model::CreateEmptyGameObject(const std::string& name, std::shared_ptr<GameObject> parent) {
+    LOG("Creating empty GameObject: '%s'", name.c_str());
+
+    // Crear GameObject vac�o
+    auto newGameObject = std::make_shared<GameObject>(name);
+
+    // A�adir Transform (todos los GameObjects necesitan Transform)
+    newGameObject->AddComponent(ComponentType::TRANSFORM);
+
+    // Establecer parent
+    if (parent) {
+        newGameObject->SetParent(parent);
+        LOG("  - Parent set to '%s'", parent->GetName().c_str());
+    }
+    else if (rootGameObject) {
+        // Si no se especifica parent, usar el root
+        newGameObject->SetParent(rootGameObject);
+        LOG("  - Parent set to root");
+    }
+
+    // A�adir a la lista
+    gameObjects.push_back(newGameObject);
+
+    LOG("Empty GameObject '%s' created successfully (Total GameObjects: %d)",
+        name.c_str(), (int)gameObjects.size());
+
+    return newGameObject;
+}
+
 Texture Model::GetOrLoadTexture(const string& fullPath, const string& fileName, const string& typeName) {
 
     auto& textures_loaded = Application::GetInstance().textures.get()->textures_loaded;
@@ -418,3 +517,4 @@ void Model::AssignDefaultTexture(std::vector<Texture>& textures) {
         LOG("  -> ERROR: Failed to assign default texture!");
     }
 }
+
