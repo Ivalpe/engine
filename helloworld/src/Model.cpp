@@ -42,7 +42,7 @@ void Model::loadModel(string path) {
 
     rootGameObject = make_shared<GameObject>(fileName);
     Application::GetInstance().guiManager.get()->sceneObjects.push_back(rootGameObject);
-    
+    rootGameObject.get()->SetOwnerModel(this);
 
     rootGameObject->AddComponent(ComponentType::TRANSFORM);
     processNodeWithGameObjects(scene->mRootNode, scene, rootGameObject);

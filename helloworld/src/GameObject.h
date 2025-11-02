@@ -3,9 +3,12 @@
 #include "Component.h"
 #include "TransformComponent.h"
 #include "Mesh.h"
+#include "Model.h"
 #include <vector>
 #include <string>
 #include <memory>
+
+class Model;
 
 class GameObject : public std::enable_shared_from_this<GameObject> {
 public:
@@ -46,12 +49,23 @@ public:
         isEmpty = true;
     }
 
+    void SetOwnerModel(Model* model) { 
+        ownerModel = model; 
+    }
+
+    Model* GetOwnerModel() { 
+        return ownerModel; 
+    }
+
 
 private:
     std::string name;
     bool active = true;
     bool markedForDestroy = false;
     bool isEmpty = false;
+
+    //store model owner for root objects
+    Model* ownerModel = nullptr;
 
     std::weak_ptr<GameObject> parent;                          // Weak pointer to parent
     std::vector<std::shared_ptr<GameObject>> children;         // Shared pointers to children
