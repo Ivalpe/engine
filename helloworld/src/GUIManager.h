@@ -48,6 +48,13 @@ public:
 
 	//add game objects to hierarchy
 	void AddGameObject(Model* obj);
+
+	//handle object deletion
+	//find model handling game object
+	Model* FindGameObjectModel(const std::shared_ptr<GameObject>& obj);
+	//queue object for deletion
+	void AddToDeleteQueue(const std::shared_ptr<GameObject>& obj);
+
 private:
 	ImGuiIO* io = nullptr;
 	std::vector<GUIElement> WindowElements;

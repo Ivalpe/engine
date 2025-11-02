@@ -147,16 +147,47 @@ bool GUIManager::Update(float dt)
 		e.ElementSetUp();
 	}
 
-
-	//test window
-	/*ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Holis", nullptr);
-
-	ImGui::Text("Soy gui");
-	ImGui::End();*/
+	//handle object deletion
+	for (auto& model : Application::GetInstance().openGL->modelObjects) model->CleanUpDestroyedObjects();
 
 	return true;
+}
+
+Model* GUIManager::FindGameObjectModel(const std::shared_ptr<GameObject>& obj) {
+	//get all models
+	auto& models = Application::GetInstance().openGL.get()->modelObjects;
+
+	//search for the model that contains a specific game object
+	for (auto& model : models)
+	{
+		for (auto& o : model->gameObjects)
+		{
+			if (o == obj) return model;
+		}
+	}
+	//if not found return nullptr
+	return nullptr;
+}
+
+void GUIManager::AddToDeleteQueue(const std::shared_ptr<GameObject>& obj) {
+	if (obj) {
+		//find model that object belongs to
+		Model* ownerModel = FindGameObjectModel(obj);
+		if (ownerModel) {
+			//queue object for deletion
+			ownerModel->DestroyGameObject(obj);
+			LOG("Queued object %s for deletion.", obj.get()->GetName().c_str());
+
+			//remove object from list so it doesnt display on the hierarchy
+			sceneObjects.erase(std::remove(sceneObjects.begin(), sceneObjects.end(), obj), sceneObjects.end());
+
+			//if object is still marked as the selected object -> selected is null
+			if (selectedObject == obj) selectedObject = nullptr;
+
+		}
+		else LOG("Cannot delete Object %s- parent Model not found.", obj.get()->GetName().c_str());
+	}
+	else LOG("Attempting to delete null object.");
 }
 
 void GUIManager::InitDock() {

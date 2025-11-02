@@ -341,6 +341,15 @@ void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_pt
 	//check if object has been selected
 	if (ImGui::IsItemClicked()) selected = obj;
 
+	//right click to delete object
+	if (ImGui::BeginPopupContextItem()) {
+		if (ImGui::MenuItem("Delete")) {
+			manager->AddToDeleteQueue(obj);
+			if (selected == obj) selected = nullptr;
+		}
+		ImGui::EndPopup();
+	}
+
 	//show children 
 	if (opened)
 	{
@@ -431,19 +440,7 @@ void GUIElement::InspectorSetUp(bool* show)
 				}
 
 				//checker texture toggle
-				//handle button colors (commented until show checker function is created)
-				//if (checkerTex) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f)); // Green when active
-				//else ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
-
-				//if (ImGui::Button("Show Checker Texture")) {
-				//	//handle checker texture
-
-				//	//handle state
-				//	//checkerTex = !checkerTex; //commented until show checker function is created
-				//}
-
-				//activate the button color change (commented until show checker function is created)
-				//ImGui::PopStyleColor();
+				//ImGui::Checkbox("Show Checker Texture", &insert_funcionOrVariableHere);
 			}
 		}
 	}
