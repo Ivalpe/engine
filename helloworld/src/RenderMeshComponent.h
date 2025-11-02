@@ -20,6 +20,7 @@ public:
     // Mesh management
     void SetMesh(std::shared_ptr<Mesh> newMesh);
     std::shared_ptr<Mesh>  GetMesh() const { return mesh; }
+    Mesh*  GetMeshPointer() const { return mesh.get(); }
 
     // Rendering
     void Render(Shader* shader);  

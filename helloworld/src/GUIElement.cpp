@@ -305,14 +305,18 @@ void GUIElement::HierarchySetUp(bool* show)
 	//create objects (minim cube)
 	if (ImGui::BeginMenu("Create...")) {
 		if (ImGui::MenuItem("Empty")) {
-			//Create empty function
-
+			//Create empty 
+			auto empty = new Model();
+			Application::GetInstance().render->AddModel(empty);
+			
+			//add empty model to lists
+			Application::GetInstance().openGL.get()->modelObjects.push_back(empty);
+			Application::GetInstance().guiManager.get()->sceneObjects.push_back(empty->GetRootGameObject());
+			
 		}
 		if (ImGui::MenuItem("Cube")) {
-			auto defaultCube = std::make_shared<Model>(Application::GetInstance().openGL->CreateCube());
-			Application::GetInstance().render->AddModel(*defaultCube);
-			
-
+			Model* defaultCube = Application::GetInstance().openGL->CreateCube();
+			Application::GetInstance().render->AddModel(defaultCube);
 		}
 		ImGui::EndMenu();
 	}
@@ -445,7 +449,10 @@ void GUIElement::InspectorSetUp(bool* show)
 				}
 
 				//checker texture toggle
-				//ImGui::Checkbox("Show Checker Texture", &insert_funcionOrVariableHere);
+				auto parentModel = manager->FindGameObjectModel(selected);
+				if (parentModel) {
+					ImGui::Checkbox("Show Checker Texture", &parentModel->useDefaultTexture);
+				}
 			}
 		}
 	}

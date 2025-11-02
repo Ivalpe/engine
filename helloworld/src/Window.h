@@ -44,7 +44,7 @@ public:
 	SDL_GLContext glContext;
 
 	std::string title;
-	int width = 800;
+	int width = 1280;
 	int height = 720;
 	int scale = 1;
 

@@ -41,7 +41,7 @@ public:
 	bool DrawCircle(int x1, int y1, int redius, Uint8 r, Uint8 g, Uint8 b, Uint8 a = 255, bool useCamera = true) const;
 
 
-	void AddModel(Model model);
+	void AddModel(Model* model);
 	bool DrawMesh(Mesh mesh, unsigned int shaderProgram, unsigned int VAO) const;
 	void DrawGrid();
 
@@ -56,7 +56,7 @@ public:
 	SDL_Rect camera;
 	SDL_Rect viewport;
 	SDL_Color background;
-	vector<Model> modelsToDraw;
+	vector<Model*> modelsToDraw;
 	
 
 private:

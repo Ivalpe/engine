@@ -115,16 +115,22 @@ Model::Model(Mesh mesh) {
      
 }
 
-void Model::Draw(Shader& shader) {
-    /*for (auto& mesh : meshes)
-        mesh->Draw(shader);*/
+Model::Model() {
+    //create root
+    rootGameObject = std::make_shared<GameObject>("EmptyObject");
+    gameObjects.push_back(rootGameObject);
+    rootGameObject->AddComponent(ComponentType::TRANSFORM);
 
+    LOG("Empty Object created successfully");
+}
+
+void Model::Draw(Shader& shader) {
     for (auto& gameObject : gameObjects) {
-        // Skip destroyed or inactive GameObjects
+        //check if object is active and is not to be destroyed
         if (!gameObject || gameObject->IsMarkedForDestroy() || !gameObject->IsActive())
             continue;
 
-        // Check if this GameObject has a MeshRenderer
+        //check for mesh renderer
         auto rendererComp = gameObject->GetComponent(ComponentType::MESH_RENDERER);
         if (!rendererComp)
             continue;
@@ -133,7 +139,35 @@ void Model::Draw(Shader& shader) {
         if (!renderer || !renderer->GetMesh())
             continue;
 
-        // Draw the mesh
+        auto mesh = renderer->GetMesh();
+        if (!mesh) continue;
+
+        //trigger checkerboard texture
+        if (useDefaultTexture) {
+            //store original texture if not yet stored
+            if (originalTextures.find(mesh) == originalTextures.end()) {
+                originalTextures[mesh] = mesh->textures;
+            }
+
+            mesh->textures.clear();
+
+            std::string checkersTexDir = Application::GetInstance().textures->defaultTexDir;
+            std::string checkersTexName = checkersTexDir.substr(checkersTexDir.find_last_of('/') + 1);
+            Texture checkersTex = GetOrLoadTexture(checkersTexDir, checkersTexName, "texture_diffuse");
+
+            mesh->textures.push_back(checkersTex);
+        }
+        else {
+            //restore original texture
+            auto ogTex = originalTextures.find(mesh);
+            if (ogTex != originalTextures.end()) {
+                mesh->textures = ogTex->second;
+                //originalTextures.erase(ogTex);
+            }
+
+        }
+
+        //draw the mesh
         renderer->GetMesh()->Draw(shader);
     }
 }

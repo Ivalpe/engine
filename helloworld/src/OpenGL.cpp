@@ -99,7 +99,7 @@ bool OpenGL::Start() {
 	ourModel = new Model(modelPath.c_str());
 	modelObjects.push_back(ourModel);
 	Application::GetInstance().guiManager.get()->AddGameObject(ourModel);
-	Application::GetInstance().render.get()->AddModel(*ourModel);
+	Application::GetInstance().render.get()->AddModel(ourModel);
 
 	viewMat = glm::mat4(1.0f);
 
@@ -145,7 +145,7 @@ bool OpenGL::Update(float dt) {
 	
 
 	for (int i = 0; i < Application::GetInstance().render.get()->modelsToDraw.size(); i++) {
-		Application::GetInstance().render.get()->modelsToDraw[i].Draw(*texCoordsShader);
+		Application::GetInstance().render.get()->modelsToDraw[i]->Draw(*texCoordsShader);
 	}
 
 	return true;
@@ -160,7 +160,7 @@ bool OpenGL::CleanUp() {
 }
 
 
-Model OpenGL::CreateCube() {
+Model* OpenGL::CreateCube() {
 	const glm::vec3 v000(-0.5f, -0.5f, -0.5f);
 	const glm::vec3 v001(-0.5f, -0.5f, 0.5f);
 	const glm::vec3 v010(-0.5f, 0.5f, -0.5f);
@@ -234,7 +234,9 @@ Model OpenGL::CreateCube() {
 	modelObjects.push_back(cubeModel);
 	Application::GetInstance().guiManager.get()->AddGameObject(cubeModel);
 	cubeModel->GetRootGameObject().get()->SetName("Cube");
+	cubeModel->useDefaultTexture = true;
 
-	return *cubeModel;
+	return cubeModel;
 
 }
+

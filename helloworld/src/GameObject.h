@@ -42,12 +42,16 @@ public:
 
     bool IsMarkedForDestroy() const { return markedForDestroy; }
     void MarkForDestroy() { markedForDestroy = true; }
+    void SetAsEmpty() {
+        isEmpty = true;
+    }
 
 
 private:
     std::string name;
     bool active = true;
     bool markedForDestroy = false;
+    bool isEmpty = false;
 
     std::weak_ptr<GameObject> parent;                          // Weak pointer to parent
     std::vector<std::shared_ptr<GameObject>> children;         // Shared pointers to children

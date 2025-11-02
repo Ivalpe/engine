@@ -30,6 +30,5 @@ public:
 	bool Update(float dt) override;
 	bool CleanUp() override;
 
-	Model CreateCube();
-
+	Model* CreateCube();
 };

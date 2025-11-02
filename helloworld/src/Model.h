@@ -5,6 +5,7 @@
 #include "GameObject.h"
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 class Model {
 public:
@@ -14,6 +15,7 @@ public:
     }
 
     Model(Mesh mesh);
+    Model();
     ~Model();
 
     
@@ -31,6 +33,11 @@ public:
     
     std::string fileName, fileExtension, directory;
     int processedMeshes = 0;
+
+    //trigger checkerboard texture
+    bool useDefaultTexture = false;
+    //store original texture for later use
+    std::unordered_map<std::shared_ptr<Mesh>, std::vector<Texture>> originalTextures;
 
     std::string fullPath;
 

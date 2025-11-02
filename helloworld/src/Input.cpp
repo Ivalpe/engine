@@ -202,7 +202,7 @@ void Input::ProcessDroppedFile(std::string sourcePath) {
 	string fileExtension = sourcePath.substr(sourcePath.find_last_of(".") + 1);
 	if (fileExtension == "fbx" || fileExtension == "FBX" || fileExtension == "obj") {
 		importedModel = new Model(droppedFileDir);
-		Application::GetInstance().render.get()->AddModel(*importedModel);
+		Application::GetInstance().render.get()->AddModel(importedModel);
 		/*Application::GetInstance().guiManager.get()->AddGameObject(importedModel);*/
 		
 	}
