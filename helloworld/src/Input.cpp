@@ -203,16 +203,14 @@ void Input::ProcessDroppedFile(std::string sourcePath) {
 	if (fileExtension == "fbx" || fileExtension == "FBX" || fileExtension == "obj") {
 		importedModel = new Model(droppedFileDir);
 		Application::GetInstance().render.get()->AddModel(importedModel);
-		/*Application::GetInstance().guiManager.get()->AddGameObject(importedModel);*/
-		//Application::GetInstance().guiManager->AddGameObject(importedModel);
-		
+		Application::GetInstance().openGL.get()->modelObjects.push_back(importedModel);
 	}
 
 	//handle image files
 	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga" || fileExtension == "dds") {
 		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager.get()->selectedObject;
 		auto parentModel = Application::GetInstance().guiManager.get()->FindGameObjectModel(selectedObj);
-		parentModel->useDefaultTexture = false;
+		if(parentModel) parentModel->useDefaultTexture = false;
 
 		auto meshComp = std::dynamic_pointer_cast<RenderMeshComponent>(
 			selectedObj->GetComponent(ComponentType::MESH_RENDERER)
@@ -257,9 +255,6 @@ void Input::ProcessDroppedFile(std::string sourcePath) {
 
 			// Set it on the MaterialComponent
 			materialComp->SetDiffuseMap(droppedTex);
-
-			
-			//modelMesh->GetMesh().get()->textures.push_back(*droppedTex);
 
 			auto meshPtr = meshComp.get()->GetMesh();
 			if (meshPtr) {
