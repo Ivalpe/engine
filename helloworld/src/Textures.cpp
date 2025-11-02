@@ -61,7 +61,16 @@ uint Texture::TextureFromFile(const string directory, const char* filename) {
     std::replace(editedDirectory.begin(), editedDirectory.end(), '\\', '/');
     editedDirectory = editedDirectory.substr(0, editedDirectory.find_last_of("/") + 1);
     
-    std::string filePath = editedDirectory + '/' + filename;
+
+    
+    std::string filePath;
+    
+    if (editedDirectory[editedDirectory.size() - 1] != '/') {
+        filePath = editedDirectory + '/' + filename;
+    }
+    else {
+        filePath = editedDirectory + filename;
+    }
 
     /*unsigned int textureID;*/
     glGenTextures(1, &id);

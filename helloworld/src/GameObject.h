@@ -40,6 +40,7 @@ public:
     const std::string& GetName() const { return name; }
     void SetName(const std::string& n) { name = n; }
 
+
 private:
     std::string name;
     bool active = true;

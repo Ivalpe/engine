@@ -328,5 +328,5 @@ void Render::DrawGrid() {
 
 	glClearColor;
 
-	//glLineWidth(1.0f);
+
 }

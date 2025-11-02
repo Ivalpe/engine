@@ -4,7 +4,9 @@
 #include "GUIManager.h"
 #include "Log.h"
 #include "OpenGL.h"
-
+#include "GameObject.h"
+#include "Component.h"
+#include "RenderMeshComponent.h"
 #include <string>
 #include <filesystem>
 #include <fstream>
@@ -17,7 +19,7 @@
 
 
 using namespace std;
-
+class RenderMeshComponent;
 
 Input::Input() : Module()
 {
@@ -150,7 +152,8 @@ bool Input::PreUpdate()
 			/*windowID = Application::GetInstance().window.get()->GetWindowID();*/
 			droppedFileDir = event.drop.data;
 			
-			LOG("Dropped File Directory = %s", droppedFileDir);
+			
+			
 
 			ProcessDroppedFile(droppedFileDir);
 			
@@ -187,9 +190,12 @@ bool Input::CleanUp()
 	return true;
 }
 
-void Input::ProcessDroppedFile(const std::string sourcePath) {
+void Input::ProcessDroppedFile(std::string sourcePath) {
 
+	std::replace(sourcePath.begin(), sourcePath.end(), '\\', '/');
 
+	LOG("Dropped File Directory = %s", sourcePath.c_str());
+		
 	//find last dot of directory to get file extension (.fbx, .obj, .png, .jpg, etc)
 
 	//handle model files
@@ -197,23 +203,71 @@ void Input::ProcessDroppedFile(const std::string sourcePath) {
 	if (fileExtension == "fbx" || fileExtension == "FBX" || fileExtension == "obj") {
 		importedModel = new Model(droppedFileDir);
 		Application::GetInstance().render.get()->AddModel(*importedModel);
+		/*Application::GetInstance().guiManager.get()->AddGameObject(importedModel);*/
+		
 	}
 
 	//handle image files
-	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga") {
-		//detect if mouse is over a mesh and which one
-		glm::mat4 projMat = Application::GetInstance().openGL.get()->projectionMat;
-		glm::mat4 viewMat = Application::GetInstance().openGL.get()->viewMat;
-		glm::vec3 mouseRayDir = MouseRay(mouseX, mouseY, projMat, viewMat);
-		
-		/*Application::GetInstance().render.get()->modelsToDraw()[]*/
-		
-		//if it is, change current material's texture for the dropped texture
-	}
+	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga" || fileExtension == "dds") {
+		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager.get()->selectedObject;
 
-	//try {
-	//	std::filesystem::copy(sourcePath, destPath);
-	//}
+		auto meshComp = selectedObj->GetComponent(ComponentType::MESH_RENDERER);
+		auto modelMesh = static_cast<RenderMeshComponent*>(meshComp.get());
+
+		if (selectedObj) {
+			if (modelMesh == nullptr) {
+				LOG("You selected an empty GameObject. Select a GameObject from the hierarchy with a mesh and try again");
+				return;
+			}
+
+			// Get MaterialComponent (not the mesh!)
+			auto materialComp = std::dynamic_pointer_cast<MaterialComponent>(selectedObj->GetComponent(ComponentType::MATERIAL));
+
+			if (!materialComp) {
+				LOG("No MaterialComponent found, creating one");
+				selectedObj->AddComponent(ComponentType::MATERIAL);
+				materialComp = std::dynamic_pointer_cast<MaterialComponent>(
+					selectedObj->GetComponent(ComponentType::MATERIAL)
+				);
+			}
+
+			if (!materialComp) {
+				LOG("ERROR: Failed to get/create MaterialComponent");
+				return;
+			}
+
+			// Load the dropped texture
+			string fileName = sourcePath.substr(sourcePath.find_last_of('/') + 1);
+			auto droppedTex = std::make_shared<Texture>();
+
+			bool success = droppedTex->TextureFromFile(sourcePath, fileName.c_str());
+
+			if (!success || droppedTex->id == 0) {
+				LOG("ERROR: Failed to load texture: %s", sourcePath.c_str());
+				return;
+			}
+
+			droppedTex->mapType = "texture_diffuse";
+			droppedTex->path = sourcePath;
+
+			// Set it on the MaterialComponent
+			materialComp->SetDiffuseMap(droppedTex);
+
+			
+			modelMesh->GetMesh().get()->textures.push_back(*droppedTex);
+
+			LOG("Texture '%s' (ID: %d) applied to '%s'",
+				fileName.c_str(),
+				droppedTex->id,
+				selectedObj->GetName().c_str());
+
+			// Optional: Also add to global texture cache
+			Application::GetInstance().textures.get()->textures_loaded.push_back(*droppedTex);
+		}
+		else {
+			LOG("No GameObject Selected. Select a GameObject in the hierarchy and try again");
+		}
+	}
 	
 	
 }

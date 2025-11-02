@@ -13,12 +13,9 @@
 #include "stb_image.h"
 #include "Textures.h"
 #include "Log.h"
+#include "GUIManager.h"
 
 using namespace std;
-
-// Static list of loaded textures
-vector<Texture> textures_loaded;
-
 
 
 void Model::loadModel(string path) {
@@ -30,17 +27,24 @@ void Model::loadModel(string path) {
         return;
     }
 
+    
+
     fullPath = path;
-    string fileExtension = fullPath.substr(fullPath.find_last_of(".") + 1);
+    std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
+    LOG("FullPath = %s", fullPath);
+    fileExtension = fullPath.substr(fullPath.find_last_of(".") + 1);
+    directory = fullPath.substr(0, fullPath.find_last_of('/'));
+    fileName = fullPath.substr(fullPath.find_last_of('/') + 1, fullPath.find_last_of('.') - (fullPath.find_last_of('/') + 1));
+
+
 
     stbi_set_flip_vertically_on_load(fileExtension == "obj");
 
-    directory = fullPath.substr(0, fullPath.find_last_of('/'));
+    rootGameObject = make_shared<GameObject>(fileName);
+    Application::GetInstance().guiManager.get()->sceneObjects.push_back(rootGameObject);
+    
 
-    rootGameObject = make_shared<GameObject>("RootNode");
     rootGameObject->AddComponent(ComponentType::TRANSFORM);
-
-
     processNodeWithGameObjects(scene->mRootNode, scene, rootGameObject);
 
     LOG("Finished Loading Model");
@@ -58,6 +62,9 @@ void Model::loadModel(string path) {
 Model::Model(Mesh mesh) {
     auto gameObject = make_shared<GameObject>();
     gameObjects.push_back(gameObject);
+    rootGameObject = gameObject;
+    
+    
 
     /*LOG("Created Cube: '%s' (Parent: '%s')", gameObject->GetName().c_str(), parent ? parent->GetName().c_str() : "NULL");*/
 
@@ -79,12 +86,33 @@ Model::Model(Mesh mesh) {
         position.x, position.y, position.z,
         scaling.x, scaling.y, scaling.z);
 
+
+    // Create & store mesh 
+    auto sharedMesh = make_shared<Mesh>(mesh);
+    meshes.push_back(sharedMesh);
+
+    // Add RenderMeshComponent and set the mesh
+    auto meshComp = gameObject->AddComponent(ComponentType::MESH_RENDERER);
+    auto modelMesh = static_cast<RenderMeshComponent*>(meshComp.get());
+    modelMesh->SetMesh(sharedMesh); 
+
+    LOG("  - Added RenderMeshComponent with mesh");
+
+    auto materialComp = gameObject->AddComponent(ComponentType::MATERIAL);
+    auto modelMat = static_cast<MaterialComponent*>(materialComp.get());
+
+    //load and assign default material texture
+    string checkersTexDir = Application::GetInstance().textures.get()->defaultTexDir;
+    string checkersTexName = checkersTexDir.substr(checkersTexDir.find_last_of('/') + 1);
     
-    /*gameObject->SetParent(rootGameObject);*/
-    /*LOG("  - Set parent to '%s'", rootGameObject->GetName());*/
-    
-    //TODO: define & apply default material
-     meshes.push_back(make_shared<Mesh>(mesh));
+
+    Texture defaultColorTex = GetOrLoadTexture(checkersTexDir, checkersTexName, "texture_diffuse");
+    modelMesh->GetMesh().get()->textures.push_back(defaultColorTex);
+
+    modelMat->SetDiffuseMap(std::make_shared<Texture>(defaultColorTex));
+
+    LOG("  - Added Material component with default texture");
+     
 }
 
 void Model::Draw(Shader& shader) {
@@ -180,6 +208,16 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene) {
 
         auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+
+    }
+    else {
+        AssignDefaultTexture(textures);
+        /*string checkersTexDir = Application::GetInstance().textures.get()->defaultTexDir;
+        string checkersTexName = checkersTexDir.substr(0, checkersTexDir.find_last_of('/') + 1);
+        Texture defaultTex = GetOrLoadTexture(checkersTexDir, checkersTexName, "texture_diffuse");
+        textures.push_back(defaultTex);*/
+        
+        
     }
 
     processedMeshes++;
@@ -193,25 +231,11 @@ vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
         aiString str;
         mat->GetTexture(type, i, &str);
-
-        bool skip = false;
-        for (auto& loadedTex : textures_loaded) {
-            if (strcmp(loadedTex.path.c_str(), fullPath.c_str()) == 0) {
-                textures.push_back(loadedTex);
-                skip = true;
-                break;
-            }
-        }
-
-        if (!skip) {
-            Texture texture;
-            texture.TextureFromFile(fullPath, str.C_Str());
-            texture.mapType = typeName;
-            texture.path = fullPath;
-            textures.push_back(texture);
-            textures_loaded.push_back(texture);
-        }
+        
+        textures.push_back(GetOrLoadTexture(fullPath, str.C_Str(), typeName));
     }
+
+    
 
     return textures;
 }
@@ -291,18 +315,23 @@ void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMe
         auto aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao");
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
     }
+    if(textures.empty()) {
+        AssignDefaultTexture(textures);
+        std::vector<Texture> diffuseMaps;
+        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+    }
 
     // --- Create Mesh ---
     auto mesh = std::make_shared<Mesh>(vertices, indices, textures);
     meshes.push_back(mesh); // store shared_ptr
 
-    // --- Add MeshRenderer Component ---
+    // --- Add RenderMeshComponent Component ---
     auto rendererComp = gameObject->AddComponent(ComponentType::MESH_RENDERER);
     auto renderer = std::dynamic_pointer_cast<RenderMeshComponent>(rendererComp);
     if (renderer)
     {
         renderer->SetMesh(mesh); // pass shared_ptr<Mesh>
-        LOG("  - Added MeshRenderer component to '%s'", gameObject->GetName().c_str());
+        LOG("  - Added RenderMeshComponent component to '%s'", gameObject->GetName().c_str());
     }
 
     // --- Add Material Component ---
@@ -315,7 +344,7 @@ void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMe
         aiColor4D color;
         if (AI_SUCCESS == aiGetMaterialColor(aiMat, AI_MATKEY_COLOR_DIFFUSE, &color))
         {
-            matComponent->SetColor(glm::vec4(color.r, color.g, color.b, color.a));
+            matComponent->SetDiffuseColor(glm::vec4(color.r, color.g, color.b, color.a));
             LOG("    - Material color: (%.2f, %.2f, %.2f, %.2f)", color.r, color.g, color.b, color.a);
         }
 
@@ -327,6 +356,9 @@ void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMe
         }
 
         LOG("  - Added Material component to '%s'", gameObject->GetName().c_str());
+    }
+    if (aiMesh->mMaterialIndex <= 0) {
+        AssignDefaultTexture(textures);
     }
 }
 
@@ -347,4 +379,42 @@ void Model::LogGameObjectHierarchy(shared_ptr<GameObject> go, int depth) {
 
     for (auto& child : go->GetChildren())
         LogGameObjectHierarchy(child, depth + 1);
+}
+
+Texture Model::GetOrLoadTexture(const string& fullPath, const string& fileName, const string& typeName) {
+
+    auto& textures_loaded = Application::GetInstance().textures.get()->textures_loaded;
+    // Check if already loaded
+    for (auto& loadedTex : textures_loaded) {
+        if (loadedTex.path == fullPath) {
+            return loadedTex; // Return the cached texture
+        }
+    }
+
+    // Not found, load new texture
+    Texture texture;
+    texture.TextureFromFile(fullPath, fileName.c_str());
+    texture.mapType = typeName;
+    texture.path = fullPath;
+    textures_loaded.push_back(texture);
+
+    return texture;
+}
+
+void Model::AssignDefaultTexture(std::vector<Texture>& textures) {
+    string fullPath = Application::GetInstance().textures.get()->defaultTexDir;
+    string fileName = fullPath.substr(fullPath.find_last_of('/') + 1);
+    string directory = fullPath.substr(0, fullPath.find_last_of('/') + 1);
+
+    LOG("AssignDefaultTexture: fullPath=%s, fileName=%s", fullPath.c_str(), fileName.c_str());
+
+    Texture defaultTex = GetOrLoadTexture(fullPath, fileName, "texture_diffuse");
+
+    if (defaultTex.id != 0) {
+        textures.push_back(defaultTex);
+        LOG("  -> Default texture assigned (ID: %d)", defaultTex.id);
+    }
+    else {
+        LOG("  -> ERROR: Failed to assign default texture!");
+    }
 }

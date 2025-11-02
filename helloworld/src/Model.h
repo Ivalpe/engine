@@ -24,9 +24,12 @@ public:
 
     std::vector<std::shared_ptr<GameObject>>& GetGameObjects() { return gameObjects; }
 
-    shared_ptr<GameObject> GetRootGameObject() const { return rootGameObject; }
+    shared_ptr<GameObject> GetRootGameObject() const 
+    { 
+        return rootGameObject; 
+    }
     
-    std::string directory;
+    std::string fileName, fileExtension, directory;
     int processedMeshes = 0;
 
     std::string fullPath;
@@ -38,21 +41,15 @@ public:
    /* void processNode(aiNode* node, const aiScene* scene);*/
     Mesh processMesh(aiMesh* mesh, const aiScene* scene);
 
-    
-    
-
     void processNodeWithGameObjects(aiNode* node, const aiScene* scene, std::shared_ptr<GameObject> parent);
     void createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMesh* aiMesh, const aiScene* scene);
 
     
    
     vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName);
+    Texture GetOrLoadTexture(const string& fullPath, const string& fileName, const string& typeName);
+    void AssignDefaultTexture(std::vector<Texture>& textures);
 
     void LogGameObjectHierarchy(std::shared_ptr<GameObject>  go, int depth);
 
-    
-    
-    
-
-    
 };
