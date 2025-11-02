@@ -27,7 +27,33 @@ An in-depth paragraph about your project and overview of use.
 
 ### Options and Settings
 
-* el view y lo de configurations
+* File -> Exit: Exit the program
+* View: Toggle on/off viewing different GUI windows
+    * Console: showcases all LOG messages and possible errors
+      * -> Clear: clears all available LOG messages
+      * -> Go to Bottom: automatically scrolls to the bottom of the console to see the latest message
+    * Configuration: showcases current FPS, hardware information, memory consuption information and versions for utilized software
+      * -> Fullscreen: toggle fullscreen mode on/off
+      * -> Resolution: pick a window resolution
+    * Hierarchy: showcases current scene's game objects
+      * By clicking on the expandable arrows, children of a game object are shown/hidden
+      * Clicking on a particular game object makes its information available on the Inspector window (see below)
+      * Right click on a selected game object displays the Delete option in order to delete a game object
+      * -> Create...: create a new game object from available options
+        * -> Empty: create an empty game object
+        * -> Cube: create a cube game object
+    * Inspector: showcases a game object's information once it has been selected from the Hierarchy window
+      * -> Game Object Name: by typing in this space, the game object's name will be changed
+      * Transform: displays the game object's position, rotation and scale values
+      * Mesh: displays the game object's vertices and indices counts
+        * -> Show Vertex Normals: displays (or turns off display of) the game object's vertex normals
+        * -> Show Face Normals: displays (or turns off display of) the game object's face normals
+      * Texture: shows game object's texture's path, width and height
+* Help
+  * -> Documentation: opens this ReadMe
+  * -> Report a Bug: opens the project's [Issues](https://github.com/KaiCaire/vroom-engine/issues) page
+  * -> Latest Release: opens the project's [Releases](https://github.com/KaiCaire/vroom-engine/releases) page
+  * -> About: opens window with information about the program
 
 ### Additional Actions
 
