@@ -234,7 +234,6 @@ Model* OpenGL::CreateCube() {
 	modelObjects.push_back(cubeModel);
 	Application::GetInstance().guiManager.get()->AddGameObject(cubeModel);
 	cubeModel->GetRootGameObject().get()->SetName("Cube");
-	cubeModel->useDefaultTexture = true;
 
 	return cubeModel;
 

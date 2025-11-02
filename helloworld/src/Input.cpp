@@ -204,14 +204,19 @@ void Input::ProcessDroppedFile(std::string sourcePath) {
 		importedModel = new Model(droppedFileDir);
 		Application::GetInstance().render.get()->AddModel(importedModel);
 		/*Application::GetInstance().guiManager.get()->AddGameObject(importedModel);*/
+		//Application::GetInstance().guiManager->AddGameObject(importedModel);
 		
 	}
 
 	//handle image files
 	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga" || fileExtension == "dds") {
 		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager.get()->selectedObject;
+		auto parentModel = Application::GetInstance().guiManager.get()->FindGameObjectModel(selectedObj);
+		parentModel->useDefaultTexture = false;
 
-		auto meshComp = selectedObj->GetComponent(ComponentType::MESH_RENDERER);
+		auto meshComp = std::dynamic_pointer_cast<RenderMeshComponent>(
+			selectedObj->GetComponent(ComponentType::MESH_RENDERER)
+		);
 		auto modelMesh = static_cast<RenderMeshComponent*>(meshComp.get());
 
 		if (selectedObj) {
@@ -254,7 +259,15 @@ void Input::ProcessDroppedFile(std::string sourcePath) {
 			materialComp->SetDiffuseMap(droppedTex);
 
 			
-			modelMesh->GetMesh().get()->textures.push_back(*droppedTex);
+			//modelMesh->GetMesh().get()->textures.push_back(*droppedTex);
+
+			auto meshPtr = meshComp.get()->GetMesh();
+			if (meshPtr) {
+				meshPtr->textures.push_back(*droppedTex);
+			}
+			else {
+				LOG("ERROR: MeshRenderer has no mesh attached");
+			}
 
 			LOG("Texture '%s' (ID: %d) applied to '%s'",
 				fileName.c_str(),
