@@ -137,13 +137,13 @@ void GUIElement::AboutSetUp() {
 		ImGui::BulletText("Bernat Loza");
 		ImGui::Separator();
 		ImGui::Text("Developed using:");
+		ImGui::BulletText("vcpkg");
 		ImGui::BulletText("assimp");
-		ImGui::BulletText("fmt");
-		ImGui::BulletText("glad");
+		ImGui::BulletText("stb");
 		ImGui::BulletText("glm");
 		ImGui::BulletText("imgui");
-		ImGui::BulletText("OpenGL");
-		ImGui::BulletText("sdl3");
+		ImGui::BulletText("glad (for OpenGL)");
+		ImGui::BulletText("sdl-3 & sdl-3.image");
 		ImGui::NewLine();
 		ImGui::Text("MIT License Copyright(c) 2025");
 
