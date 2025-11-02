@@ -94,12 +94,8 @@ bool OpenGL::Start() {
 
 	ourModel = new Model(modelPath.c_str());
 	modelObjects.push_back(ourModel);
-
+	Application::GetInstance().guiManager.get()->AddGameObject(ourModel);
 	Application::GetInstance().render.get()->AddModel(*ourModel);
-
-
-	/*Model defaultCube = CreateCube();
-	Application::GetInstance().render.get()->AddModel(defaultCube);*/
 
 	cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 	cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -134,10 +130,7 @@ bool OpenGL::Update(float dt) {
 
 	//use shader's line color instead of texture
 	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), true);
-
 	glUniform4f(glGetUniformLocation(texCoordsShader->ID, "lineColor"), 1.0f, 1.0f, 1.0f, 0.5f); //white grid
-
-
 
 	Application::GetInstance().render.get()->DrawGrid();
 
@@ -338,14 +331,14 @@ void OpenGL::ProcessScrollZoom(float delta, bool isMouseScroll)
 
 
 Model OpenGL::CreateCube() {
-	const glm::vec3 v000(-1.0f, -1.0f, -1.0f);
-	const glm::vec3 v001(-1.0f, -1.0f, 1.0f);
-	const glm::vec3 v010(-1.0f, 1.0f, -1.0f);
-	const glm::vec3 v011(-1.0f, 1.0f, 1.0f);
-	const glm::vec3 v100(1.0f, -1.0f, -1.0f);
-	const glm::vec3 v101(1.0f, -1.0f, 1.0f);
-	const glm::vec3 v110(1.0f, 1.0f, -1.0f);
-	const glm::vec3 v111(1.0f, 1.0f, 1.0f);
+	const glm::vec3 v000(-0.5f, -0.5f, -0.5f);
+	const glm::vec3 v001(-0.5f, -0.5f, 0.5f);
+	const glm::vec3 v010(-0.5f, 0.5f, -0.5f);
+	const glm::vec3 v011(-0.5f, 0.5f, 0.5f);
+	const glm::vec3 v100(0.5f, -0.5f, -0.5f);
+	const glm::vec3 v101(0.5f, -0.5f, 0.5f);
+	const glm::vec3 v110(0.5f, 0.5f, -0.5f);
+	const glm::vec3 v111(0.5f, 0.5f, 0.5f);
 
 	std::vector<Vertex> _vertices;
 	std::vector<unsigned int> _indices;

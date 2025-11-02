@@ -24,6 +24,8 @@ public:
 
 	uint TextureFromFile(std::string directory, const char* filename);
 
+	
+
 
 public:
 	
@@ -33,5 +35,8 @@ public:
 	int texW, texH;
 
 	std::vector<Texture> textures_loaded;
+
+	std::string defaultTexDir = "../Assets/Textures/checkers.jpg";
+	
 	
 };

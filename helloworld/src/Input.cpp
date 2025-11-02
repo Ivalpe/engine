@@ -203,59 +203,66 @@ void Input::ProcessDroppedFile(std::string sourcePath) {
 	if (fileExtension == "fbx" || fileExtension == "FBX" || fileExtension == "obj") {
 		importedModel = new Model(droppedFileDir);
 		Application::GetInstance().render.get()->AddModel(*importedModel);
+		/*Application::GetInstance().guiManager.get()->AddGameObject(importedModel);*/
 		
 	}
 
 	//handle image files
 	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga" || fileExtension == "dds") {
 		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager.get()->selectedObject;
+
+		auto meshComp = selectedObj->GetComponent(ComponentType::MESH_RENDERER);
+		auto modelMesh = static_cast<RenderMeshComponent*>(meshComp.get());
+
 		if (selectedObj) {
-			if (selectedObj->GetName() == "RootNode") {
-				LOG("You can't add a texture to the Root Node. Select another GameObject from the hierarchy and try again");
+			if (modelMesh == nullptr) {
+				LOG("You selected an empty GameObject. Select a GameObject from the hierarchy with a mesh and try again");
 				return;
 			}
 
-			auto renderMeshComp = std::dynamic_pointer_cast<RenderMeshComponent>(selectedObj->GetComponent(ComponentType::MESH_RENDERER));
+			// Get MaterialComponent (not the mesh!)
+			auto materialComp = std::dynamic_pointer_cast<MaterialComponent>(selectedObj->GetComponent(ComponentType::MATERIAL));
 
-			if (renderMeshComp == nullptr) {
-				LOG("No RenderMeshComponent found on selected GameObject");
+			if (!materialComp) {
+				LOG("No MaterialComponent found, creating one");
+				selectedObj->AddComponent(ComponentType::MATERIAL);
+				materialComp = std::dynamic_pointer_cast<MaterialComponent>(
+					selectedObj->GetComponent(ComponentType::MATERIAL)
+				);
+			}
+
+			if (!materialComp) {
+				LOG("ERROR: Failed to get/create MaterialComponent");
 				return;
 			}
 
-			auto mesh = renderMeshComp->GetMesh();
-			if (mesh == nullptr) {
-				LOG("No mesh found in RenderMeshComponent");
-				return;
-			}
-
-			// Get REFERENCE to the actual textures vector in the mesh
-			vector<Texture>& meshTextures = mesh->textures;
-
-			// Load dragged texture
-			Texture droppedTex;
+			// Load the dropped texture
 			string fileName = sourcePath.substr(sourcePath.find_last_of('/') + 1);
-			droppedTex.TextureFromFile(sourcePath, fileName.c_str());
-			droppedTex.mapType = "texture_diffuse"; // Default to diffuse
-			droppedTex.path = sourcePath;
+			auto droppedTex = std::make_shared<Texture>();
 
-			// Find and replace existing diffuse texture, or add new one
-			bool replaced = false;
-			for (auto& t : meshTextures) { 
-				if (t.mapType == "texture_diffuse") {
-					t = droppedTex;
-					replaced = true;
-					LOG("Replaced existing diffuse texture");
-					break;
-				}
+			bool success = droppedTex->TextureFromFile(sourcePath, fileName.c_str());
+
+			if (!success || droppedTex->id == 0) {
+				LOG("ERROR: Failed to load texture: %s", sourcePath.c_str());
+				return;
 			}
 
-			if (!replaced) {
-				meshTextures.push_back(droppedTex);
-				LOG("Added new diffuse texture");
-			}
+			droppedTex->mapType = "texture_diffuse";
+			droppedTex->path = sourcePath;
 
-			Application::GetInstance().textures.get()->textures_loaded.push_back(droppedTex);
-			LOG("Texture '%s' applied to '%s'", fileName.c_str(), selectedObj->GetName().c_str());
+			// Set it on the MaterialComponent
+			materialComp->SetDiffuseMap(droppedTex);
+
+			
+			modelMesh->GetMesh().get()->textures.push_back(*droppedTex);
+
+			LOG("Texture '%s' (ID: %d) applied to '%s'",
+				fileName.c_str(),
+				droppedTex->id,
+				selectedObj->GetName().c_str());
+
+			// Optional: Also add to global texture cache
+			Application::GetInstance().textures.get()->textures_loaded.push_back(*droppedTex);
 		}
 		else {
 			LOG("No GameObject Selected. Select a GameObject in the hierarchy and try again");

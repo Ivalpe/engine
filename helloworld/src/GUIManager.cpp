@@ -93,12 +93,12 @@ void GUIManager::AddGameObject(Model* obj) {
 bool GUIManager::Update(float dt)
 {
 	//initialize game object list
-	if (!objectsInitialized) {
-		for (auto m : Application::GetInstance().openGL.get()->modelObjects) {
-			sceneObjects.push_back(m->rootGameObject);
-		}
-		objectsInitialized = true;
-	}
+	//if (!objectsInitialized) {
+	//	for (auto m : Application::GetInstance().openGL.get()->modelObjects) {
+	//		sceneObjects.push_back(m->rootGameObject);
+	//	}
+	//	objectsInitialized = true;
+	//}
 	
 	//Start the ImGui frame
 	ImGui_ImplOpenGL3_NewFrame();

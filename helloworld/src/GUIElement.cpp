@@ -311,6 +311,7 @@ void GUIElement::HierarchySetUp(bool* show)
 		if (ImGui::MenuItem("Cube")) {
 			auto defaultCube = std::make_shared<Model>(Application::GetInstance().openGL->CreateCube());
 			Application::GetInstance().render->AddModel(*defaultCube);
+			
 
 		}
 		ImGui::EndMenu();
