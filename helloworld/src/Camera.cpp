@@ -1,40 +1,259 @@
 #pragma once
-#include "Module.h"
+#include "Application.h"
 #include "Camera.h"
+#include "Input.h"
+#include "Window.h"
+#include "GUIManager.h"
+#include "GameObject.h"
+#include "TransformComponent.h"
+#include <glm/gtx/string_cast.hpp>
 
 
 Camera::Camera() : Module()
 {
 	name = "camera";
+	// Initialize defaults here
+	cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+	cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+	cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+	targetPos = glm::vec3(0.0f, 0.0f, 0.0f);
+	yaw = -90.0f; // Mirando hacia -Z (lo estándar en OpenGL)
+	pitch = 0.0f;
+	fov = 45.0f;
+	distance = glm::length(cameraPos - targetPos); // Distancia inicial (3.0f)
+
+	firstMouse = true;
+	lastX = 0.0f;
+	lastY = 0.0f;
+	xpos = 0.0f;
+	ypos = 0.0f;
 }
 
-bool Camera::Start()
-{
-	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-
-	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
-
-	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-	glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
-
-	glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
-
-	glm::mat4 view;
-	view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
-		glm::vec3(0.0f, 0.0f, 0.0f),
-		glm::vec3(0.0f, 1.0f, 0.0f));
-	return true;
-}
-
-// Destructor
 Camera::~Camera()
 {
 }
 
-bool Camera::Update(float dt)
+bool Camera::Start()
 {
+	// Inicialización de matrices
+	int windowW, windowH;
+	Application::GetInstance().window->GetSize(windowW, windowH);
 
+	UpdateCameraVectors();
 
 	return true;
+}
+
+bool Camera::Update(float dt)
+{
+	//camera controls
+	float cameraSpeed;
+
+
+	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LSHIFT) == KEY_REPEAT)
+		cameraSpeed = 0.20f;
+	else
+		cameraSpeed = 0.05f;
+
+	xpos = Application::GetInstance().input.get()->GetMousePosition().x;
+	ypos = Application::GetInstance().input.get()->GetMousePosition().y;
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos;
+
+	//Right Click
+	if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_REPEAT &&
+		Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) != KEY_REPEAT)
+	{
+		ProcessKeyboardMovement(cameraSpeed);
+		ProcessMouseRotation(xoffset, yoffset, 0.1f);
+		UpdateCameraVectors();
+
+		targetPos = cameraPos + cameraFront * distance;
+	}
+
+	if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_UP &&
+		Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_UP &&
+		Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_MIDDLE) == KEY_UP)
+		firstMouse = true;
+
+
+
+	//Alt + mouse
+	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
+	{
+		if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_REPEAT) // Orbitar
+		{
+			ProcessMouseRotation(xoffset, yoffset, 0.3f);
+		}
+		else if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_MIDDLE) == KEY_REPEAT) // Pan
+		{
+			ProcessPan(xoffset, -yoffset);
+		}
+		else if (Application::GetInstance().input.get()->GetMouseButtonDown(SDL_BUTTON_RIGHT) == KEY_REPEAT) // Dolly
+		{
+			float combinedDelta = xoffset - yoffset;
+			ProcessScrollZoom(combinedDelta, false);
+			cameraPos = targetPos - cameraFront * distance;
+		}
+	}
+
+	lastX = xpos;
+	lastY = ypos;
+
+	// Mouse Wheel
+	float wheelDelta = Application::GetInstance().input.get()->GetMouseWheelDeltaY();
+	if (std::abs(wheelDelta) > 10000.0f)
+		wheelDelta = 0.0f;
+
+	if (wheelDelta != 0.0f)
+	{
+		ProcessScrollZoom(wheelDelta, true);
+		if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
+		{
+			cameraPos = targetPos - cameraFront * distance;
+		}
+	}
+	Application::GetInstance().input.get()->SetMouseWheelDeltaY(0);
+
+	FocusObject(false);
+	UpdateCameraVectors();
+
+	int windowW, windowH;
+	Application::GetInstance().window->GetSize(windowW, windowH);
+	RecalculateMatrices(windowW, windowH);
+
+	return true;
+}
+
+// Implementaciones de las funciones helper
+
+void Camera::ProcessMouseRotation(float xoffset, float yoffset, float sensitivity)
+{
+	if (firstMouse)
+	{
+		lastX = Application::GetInstance().input.get()->GetMousePosition().x;
+		lastY = Application::GetInstance().input.get()->GetMousePosition().y;
+		firstMouse = false;
+		return;
+	}
+
+	xoffset *= sensitivity;
+	yoffset *= sensitivity;
+
+	yaw += xoffset;
+	pitch += yoffset;
+
+
+	if (pitch > 89.0f) pitch = 89.0f;
+	if (pitch < -89.0f) pitch = -89.0f;
+
+
+	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT)
+	{
+		UpdateCameraVectors();
+		cameraPos = targetPos - cameraFront * distance;
+	}
+}
+
+void Camera::UpdateCameraVectors()
+{
+	glm::vec3 direction;
+	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+	direction.y = sin(glm::radians(pitch));
+	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+	cameraFront = glm::normalize(direction);
+}
+
+void Camera::ProcessKeyboardMovement(float actualSpeed)
+{
+	glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
+	glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+	if (Application::GetInstance().input->GetKey(SDL_SCANCODE_W) == KEY_REPEAT)
+		cameraPos += actualSpeed * cameraFront;
+	if (Application::GetInstance().input->GetKey(SDL_SCANCODE_S) == KEY_REPEAT)
+		cameraPos -= actualSpeed * cameraFront;
+
+	if (Application::GetInstance().input->GetKey(SDL_SCANCODE_D) == KEY_REPEAT)
+		cameraPos += cameraRight * actualSpeed;
+	if (Application::GetInstance().input->GetKey(SDL_SCANCODE_A) == KEY_REPEAT)
+		cameraPos -= cameraRight * actualSpeed;
+
+	if (Application::GetInstance().input->GetKey(SDL_SCANCODE_E) == KEY_REPEAT)
+		cameraPos += worldUp * actualSpeed;
+	if (Application::GetInstance().input->GetKey(SDL_SCANCODE_Q) == KEY_REPEAT)
+		cameraPos -= worldUp * actualSpeed;
+}
+
+void Camera::ProcessPan(float xoffset, float yoffset)
+{
+	float panSpeed = 0.01f * (distance / 2);
+
+	glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
+	glm::vec3 cameraUpVector = glm::normalize(glm::cross(cameraRight, cameraFront));
+
+	targetPos -= cameraRight * xoffset * panSpeed;
+	targetPos += cameraUpVector * yoffset * panSpeed;
+	cameraPos = targetPos - cameraFront * distance;
+}
+
+void Camera::ProcessScrollZoom(float delta, bool isMouseScroll)
+{
+	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_LALT) == KEY_REPEAT || !isMouseScroll) {
+
+		float dollyMultiplier = isMouseScroll ? 0.5f : (0.01f * distance);
+		distance -= delta * dollyMultiplier;
+
+		if (distance < 0.1f)
+			distance = 0.1f;
+	}
+	else {
+		float zoomSpeed = 5.0f;
+		fov -= delta * zoomSpeed;
+		if (fov < 1.0f) fov = 1.0f;
+		if (fov > 90.0f) fov = 90.0f;
+	}
+}
+
+void Camera::FocusObject(bool firstTime) {
+	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_F) == KEY_DOWN || firstTime)
+	{
+		std::shared_ptr<GameObject> selectedObj;
+		if (firstTime)
+			selectedObj = Application::GetInstance().guiManager->sceneObjects[0];
+		else
+			selectedObj = Application::GetInstance().guiManager->selectedObject;
+
+		if (selectedObj)
+		{
+			auto transformComp = std::dynamic_pointer_cast<TransformComponent>(
+				selectedObj->GetComponent(ComponentType::TRANSFORM)
+			);
+
+			if (transformComp)
+			{
+				glm::vec3 targetPosition = transformComp->GetWorldPosition();
+
+				UpdateCameraVectors();
+				const float focusDistance = 7.0f;
+				const float heightOffset = 1.0f;
+
+				cameraPos = targetPosition - cameraFront * focusDistance + glm::vec3(0, heightOffset, 0);
+
+				targetPos = targetPosition;
+				distance = glm::length(cameraPos - targetPos);
+
+				glm::vec3 direction = glm::normalize(targetPos - cameraPos);
+				yaw = glm::degrees(atan2(direction.z, direction.x));
+				pitch = glm::degrees(asin(direction.y));
+			}
+		}
+	}
+}
+
+void Camera::RecalculateMatrices(int windowW, int windowH)
+{
+	float aspectRatio = (float)Application::GetInstance().window.get()->width / (float)Application::GetInstance().window.get()->height;
+	projectionMat = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 100.0f);
+	viewMat = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }

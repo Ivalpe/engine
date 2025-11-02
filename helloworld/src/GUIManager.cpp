@@ -11,6 +11,7 @@
 #include "imgui_internal.h" 
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_opengl3.h>
+#include "Camera.h"
 
 GUIManager::GUIManager() : Module(), AdditionalElements(ElementType::Additional, this), Menu(ElementType::MenuBar, this), sceneObjects(), selectedObject(nullptr)
 {
@@ -93,12 +94,14 @@ void GUIManager::AddGameObject(Model* obj) {
 bool GUIManager::Update(float dt)
 {
 	//initialize game object list
+
 	//if (!objectsInitialized) {
 	//	for (auto m : Application::GetInstance().openGL.get()->modelObjects) {
 	//		sceneObjects.push_back(m->rootGameObject);
 	//	}
 	//	objectsInitialized = true;
 	//}
+
 	
 	//Start the ImGui frame
 	ImGui_ImplOpenGL3_NewFrame();
