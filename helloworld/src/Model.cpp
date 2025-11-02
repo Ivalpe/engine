@@ -45,7 +45,10 @@ void Model::loadModel(string path) {
     rootGameObject.get()->SetOwnerModel(this);
 
     rootGameObject->AddComponent(ComponentType::TRANSFORM);
-    processNodeWithGameObjects(scene->mRootNode, scene, rootGameObject);
+    /*processNodeWithGameObjects(scene->mRootNode, scene, rootGameObject);*/
+    for (int i = 0; i < scene->mRootNode->mNumChildren; i++) {
+        processNodeWithGameObjects(scene->mRootNode->mChildren[i], scene, rootGameObject);
+    }
 
     LOG("Finished Loading Model");
     LOG("=== MODEL LOADING SUMMARY ===");

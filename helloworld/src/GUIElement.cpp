@@ -419,6 +419,7 @@ void GUIElement::InspectorSetUp(bool* show)
 		bool showFaceNormals = manager->drawFaceNormals;
 		bool showVertNormals = manager->drawVertNormals;
 
+		
 		if (meshComponent) {
 			std::shared_ptr<Mesh> mesh = meshComponent.get()->GetMesh();
 			if(mesh) textureComponent = mesh.get()->textures;
@@ -441,17 +442,43 @@ void GUIElement::InspectorSetUp(bool* show)
 
 			//texture
 			if (ImGui::CollapsingHeader("Texture")) {
-				for (auto t : textureComponent) {
-					ImGui::Text("Texture %u", t.id);
-					ImGui::BulletText("Path: %s", t.path.c_str());
-					ImGui::BulletText("Width: %d", t.texW);
-					ImGui::BulletText("Height: %d", t.texH);
+				// Show current texture info
+				auto materialComp = std::dynamic_pointer_cast<MaterialComponent>(
+					selected->GetComponent(ComponentType::MATERIAL)
+				);
+
+				if (materialComp && materialComp->GetDiffuseMap()) {
+					auto currentTex = materialComp->GetDiffuseMap();
+					ImGui::Text("Current Texture ID: %u", currentTex->id);
+					ImGui::BulletText("Path: %s", currentTex->path.c_str());
+					ImGui::BulletText("Width: %d", currentTex->texW);
+					ImGui::BulletText("Height: %d", currentTex->texH);
 				}
 
-				//checker texture toggle
+				// Checker texture toggle
 				auto parentModel = manager->FindGameObjectModel(selected);
-				if (parentModel) {
-					ImGui::Checkbox("Show Checker Texture", &parentModel->useDefaultTexture);
+				if (parentModel && materialComp) {
+					if (ImGui::Checkbox("Show Checker Texture", &parentModel->useDefaultTexture)) {
+						if (parentModel->useDefaultTexture) {
+							// SWITCHING TO CHECKER
+							// Save current texture
+							parentModel->savedTexture = materialComp->GetDiffuseMap();
+
+							// Load checker
+							string fullPath = Application::GetInstance().textures.get()->defaultTexDir;
+							string fileName = fullPath.substr(fullPath.find_last_of('/') + 1);
+							auto checkerTex = std::make_shared<Texture>();
+							checkerTex->TextureFromFile(fullPath, fileName.c_str());
+
+							materialComp->SetDiffuseMap(checkerTex);
+						}
+						else {
+							// SWITCHING BACK TO ORIGINAL
+							if (parentModel->savedTexture) {
+								materialComp->SetDiffuseMap(parentModel->savedTexture);
+							}
+						}
+					}
 				}
 			}
 		}
