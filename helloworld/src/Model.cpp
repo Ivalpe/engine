@@ -101,6 +101,8 @@ Model::Model(Mesh mesh) {
 
     LOG("  - Added RenderMeshComponent with mesh");
 
+    modelMesh->drawAABB = true;
+
     auto materialComp = gameObject->AddComponent(ComponentType::MATERIAL);
     auto modelMat = static_cast<MaterialComponent*>(materialComp.get());
 
@@ -145,6 +147,14 @@ void Model::Draw(Shader& shader) {
         auto mesh = renderer->GetMesh();
         if (!mesh) continue;
 
+        
+        auto transformComp = gameObject->GetComponent(ComponentType::TRANSFORM);
+        if (!transformComp) continue;
+        auto transform = std::dynamic_pointer_cast<TransformComponent>(transformComp);
+        if (!transform) continue;
+
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        
         //trigger checkerboard texture
         if (useDefaultTexture) {
             //store original texture if not yet stored
@@ -168,6 +178,14 @@ void Model::Draw(Shader& shader) {
                 //originalTextures.erase(ogTex);
             }
 
+        }
+        
+        GLint modelLoc = glGetUniformLocation(shader.ID, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+        if (gameObject->isSelected) {
+            // Dibujamos la caja en color magenta, usando la matriz global calculada.
+            mesh->DrawAABB(shader, modelMatrix, glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
         }
 
         //draw the mesh
@@ -387,6 +405,8 @@ void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMe
     {
         renderer->SetMesh(mesh); // pass shared_ptr<Mesh>
         LOG("  - Added RenderMeshComponent component to '%s'", gameObject->GetName().c_str());
+    
+        renderer->drawAABB = true;
     }
 
     // --- Add Material Component ---

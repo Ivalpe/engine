@@ -25,6 +25,9 @@ public:
     // Rendering
     void Render(Shader* shader);  
 
+    bool drawAABB = false;
+    void ToggleAABB(bool state) { drawAABB = state; }
+
 private:
     std::shared_ptr<Mesh> mesh;  // Pointer to mesh data (not owned by this component)
     bool drawFaceNormals;
