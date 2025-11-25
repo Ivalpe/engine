@@ -156,6 +156,26 @@ bool GUIManager::Update(float dt)
 	return true;
 }
 
+void GUIManager::SetSelectedObject(const std::shared_ptr<GameObject>& obj) {
+
+	// 1. Deseleccionar el objeto previamente seleccionado (si existe y es diferente)
+	if (selectedObject && selectedObject != obj) {
+		selectedObject->isSelected = false;
+	}
+
+	// 2. Establecer el nuevo objeto como seleccionado
+	if (obj) {
+		selectedObject = obj;
+		selectedObject->isSelected = true; // Esto activa la Bounding Box
+		LOG("GameObject selected: %s", selectedObject->GetName().c_str());
+	}
+	else {
+		// Si se pasa nullptr, se deselecciona todo
+		selectedObject = nullptr;
+		LOG("GameObject deselected.");
+	}
+}
+
 Model* GUIManager::FindGameObjectModel(const std::shared_ptr<GameObject>& obj) {
 	//get all models
 	auto& models = Application::GetInstance().openGL.get()->modelObjects;

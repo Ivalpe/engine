@@ -50,6 +50,8 @@ public:
 		return framesPerSecond;
 	}
 
+	void ProcessObjectSelection();
+
 private:
 
 	// Private constructor to prevent instantiation
