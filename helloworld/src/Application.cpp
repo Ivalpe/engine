@@ -198,6 +198,10 @@ void Application::ProcessObjectSelection() {
     // Comprobamos si se ha hecho click izquierdo
     if (input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_DOWN) {
 
+        if (guiManager.get()->GetIO() && guiManager.get()->GetIO()->WantCaptureMouse) {
+            return;
+        }
+
         int mouseX, mouseY;
         // La clase Input solo tiene GetMousePosition() que devuelve SDL_FPoint. 
         // Si no tienes GetMousePosition(int&, int&), usa el miembro publico (o adaptalo)

@@ -56,6 +56,7 @@ public:
 	void AddToDeleteQueue(const std::shared_ptr<GameObject>& obj);
 
 	void SetSelectedObject(const std::shared_ptr<GameObject>& obj);
+	ImGuiIO* GetIO() const { return io; }
 
 private:
 	ImGuiIO* io = nullptr;
