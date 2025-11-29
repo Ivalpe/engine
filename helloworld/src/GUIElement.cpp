@@ -29,15 +29,15 @@ GUIElement::GUIElement(ElementType t, GUIManager* m)
 	type = t;
 	manager = m;
 
-	
+
 }
 
-GUIElement:: ~GUIElement() 
+GUIElement:: ~GUIElement()
 {
 
 }
 
-void GUIElement::ElementSetUp() 
+void GUIElement::ElementSetUp()
 {
 	switch (type) {
 	case ElementType::Additional:
@@ -48,7 +48,7 @@ void GUIElement::ElementSetUp()
 		MenuBarSetUp();
 		break;
 	case ElementType::Console:
-		if(Application::GetInstance().guiManager.get()->showConsole) ConsoleSetUp(&Application::GetInstance().guiManager.get()->showConsole);
+		if (Application::GetInstance().guiManager.get()->showConsole) ConsoleSetUp(&Application::GetInstance().guiManager.get()->showConsole);
 		break;
 	case ElementType::Config:
 		if (Application::GetInstance().guiManager.get()->showConfig) ConfigSetUp(&Application::GetInstance().guiManager.get()->showConfig);
@@ -66,7 +66,7 @@ void GUIElement::ElementSetUp()
 }
 
 //type set ups
-void GUIElement::MenuBarSetUp() 
+void GUIElement::MenuBarSetUp()
 {
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
@@ -126,7 +126,7 @@ void GUIElement::MenuBarSetUp()
 
 void GUIElement::AboutSetUp() {
 	if (ImGui::BeginPopupModal("About", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-		
+
 		//Text
 		ImGui::Text("VroomEngine v.1");
 		ImGui::Separator();
@@ -247,7 +247,7 @@ void GUIElement::ConfigSetUp(bool* show) {
 			for (int i = 0; i < options.size(); i++) {
 				//find selected resoltion
 				bool selected = (current == options[i]);
-				
+
 				//create option label
 				std::string label = (std::to_string((int)options[i].x) + "x" + std::to_string((int)options[i].y));
 				if (ImGui::Selectable(label.c_str(), selected)) {
@@ -277,12 +277,12 @@ void GUIElement::ConfigSetUp(bool* show) {
 	// OpenGL
 	const char* glVer = reinterpret_cast<const char*>(glGetString(GL_VERSION));
 	ImGui::BulletText("OpenGL: %s", glVer ? glVer : "Unknown");
-	
+
 	ImGui::BulletText("ImGui: %s", IMGUI_VERSION);
 	ImGui::BulletText("GLM: %d.%d.%d", GLM_VERSION_MAJOR, GLM_VERSION_MINOR, GLM_VERSION_PATCH);
 	ImGui::BulletText("Assimp: %d.%d.%d", aiGetVersionMajor(), aiGetVersionMinor(), aiGetVersionRevision());
 	ImGui::BulletText("fmt: %d.%d.%d", FMT_VERSION / 10000, (FMT_VERSION / 100) % 100, FMT_VERSION % 100);
-	
+
 	ImGui::End();
 }
 
@@ -308,11 +308,11 @@ void GUIElement::HierarchySetUp(bool* show)
 			//Create empty 
 			auto empty = new Model();
 			Application::GetInstance().render->AddModel(empty);
-			
+
 			//add empty model to lists
 			Application::GetInstance().openGL.get()->modelObjects.push_back(empty);
 			Application::GetInstance().guiManager.get()->sceneObjects.push_back(empty->GetRootGameObject());
-			
+
 		}
 		if (ImGui::MenuItem("Cube")) {
 			Model* defaultCube = Application::GetInstance().openGL->CreateCube();
@@ -348,7 +348,14 @@ void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_pt
 	bool opened = ImGui::TreeNodeEx((void*)obj.get(), flags, "%s", obj->GetName().c_str());
 
 	//check if object has been selected
-	if (ImGui::IsItemClicked()) selected = obj;
+	if (ImGui::IsItemClicked()) { 
+		if (selected != nullptr) selected->isSelected = false;
+		selected = obj; 
+	}
+
+	if (selected != nullptr) {
+		selected->isSelected = true;
+	}
 
 	//right click to delete object
 	if (ImGui::BeginPopupContextItem()) {
@@ -392,7 +399,7 @@ void GUIElement::InspectorSetUp(bool* show)
 		strcpy(buffer, selected->GetName().c_str());
 		if (ImGui::InputText("##hidden", buffer, sizeof(buffer))) selected->SetName(buffer);
 
-	    //transform
+		//transform
 		//get transform component
 		auto transform = std::dynamic_pointer_cast<TransformComponent>(selected->GetComponent(ComponentType::TRANSFORM));
 		if (transform) {
@@ -409,7 +416,7 @@ void GUIElement::InspectorSetUp(bool* show)
 				ImGui::Text("Scale: %.2f, %.2f, %.2f", scale.x, scale.y, scale.z);
 			}
 		}
-		
+
 		//mesh
 		//get mesh component
 		auto meshComponent = std::dynamic_pointer_cast<RenderMeshComponent>(selected->GetComponent(ComponentType::MESH_RENDERER));
@@ -419,10 +426,10 @@ void GUIElement::InspectorSetUp(bool* show)
 		bool showFaceNormals = manager->drawFaceNormals;
 		bool showVertNormals = manager->drawVertNormals;
 
-		
+
 		if (meshComponent) {
 			std::shared_ptr<Mesh> mesh = meshComponent.get()->GetMesh();
-			if(mesh) textureComponent = mesh.get()->textures;
+			if (mesh) textureComponent = mesh.get()->textures;
 
 			//check if header is open
 			if (ImGui::CollapsingHeader("Mesh")) {

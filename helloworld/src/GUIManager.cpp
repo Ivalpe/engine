@@ -156,6 +156,33 @@ bool GUIManager::Update(float dt)
 	return true;
 }
 
+void GUIManager::SetSelectedObject(const std::shared_ptr<GameObject>& obj) {
+
+	// 1. Si el objeto nuevo es el mismo que el viejo (incluido nullptr), no hacemos nada.
+	if (selectedObject == obj) {
+		return;
+	}
+
+	// 2. Si hay un objeto seleccionado previamente, lo deseleccionamos primero.
+	if (selectedObject) {
+		// Desactiva la Bounding Box del objeto anterior
+		selectedObject->isSelected = false;
+	}
+
+	// 3. Actualizamos el puntero interno al nuevo objeto.
+	selectedObject = obj;
+
+	// 4. Si el nuevo objeto NO es nulo, lo seleccionamos y activamos su Bounding Box.
+	if (selectedObject) {
+		selectedObject->isSelected = true;
+		LOG("GameObject selected: %s", selectedObject->GetName().c_str());
+	}
+	else {
+		// El caso en que obj era nullptr (clic en el aire)
+		LOG("Scene deselected (clicked empty space).");
+	}
+}
+
 Model* GUIManager::FindGameObjectModel(const std::shared_ptr<GameObject>& obj) {
 	//get all models
 	auto& models = Application::GetInstance().openGL.get()->modelObjects;

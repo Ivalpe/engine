@@ -69,8 +69,6 @@ public:
 	SDL_FPoint GetMousePosition();
 	SDL_FPoint GetMouseMotion();
 	Model* importedModel;
-	
-
 
 	int GetMouseWheelDeltaY() const { return mouseWheelY; }
 

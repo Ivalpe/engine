@@ -44,6 +44,30 @@ bool Camera::Start()
 	return true;
 }
 
+glm::vec3 Camera::ScreenPointToRay(float mouseX, float mouseY, int screenW, int screenH) const {
+
+	// 1. Coordenadas normalizadas del dispositivo (NDC)
+	float x = (2.0f * mouseX) / screenW - 1.0f;
+	float y = 1.0f - (2.0f * mouseY) / screenH; // Invertir Y (SDL usa Y-abajo, OpenGL usa Y-arriba)
+
+	// Usamos Z = -1.0 (cerca)
+	glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+
+	// 2. Espacio de la Cámara (View Space)
+	glm::mat4 invProjection = glm::inverse(GetProjectionMatrix());
+	glm::vec4 rayEye = invProjection * rayClip;
+
+	// Forzamos Z = -1.0 y W = 0.0 (es un vector de dirección)
+	rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+
+	// 3. Espacio del Mundo (World Space)
+	glm::mat4 invView = glm::inverse(GetViewMatrix());
+	glm::vec4 rayWorld = invView * rayEye;
+
+	// Normalizamos la dirección final
+	return glm::normalize(glm::vec3(rayWorld));
+}
+
 bool Camera::Update(float dt)
 {
 	//camera controls
