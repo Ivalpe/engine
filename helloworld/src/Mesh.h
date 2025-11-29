@@ -11,6 +11,7 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 #include "assimp/mesh.h"
+#include <limits>
 
 
 using namespace std;
@@ -19,6 +20,12 @@ struct Vertex {
     glm::vec3 Position;
     glm::vec3 Normal;
     glm::vec2 texCoord;
+};
+
+struct AABB {
+    // Inicializar min con valores muy grandes y max con valores muy pequeños
+    glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+    glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
 };
 
 class Texture;
@@ -33,10 +40,13 @@ public:
 
     vector<glm::vec3>    normals;
     
+    AABB meshAABB;
 
     Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
     ~Mesh();
     void CalculateNormals();
+    void CalculateAABB();
+    void DrawAABB(Shader& shader, const glm::mat4& modelMatrix, const glm::vec4& color);
     void Draw(Shader &shader);
     bool drawVertNormals = false;
     bool drawFaceNormals = false;

@@ -19,6 +19,7 @@ Mesh::Mesh(vector<Vertex> _vertices, vector<unsigned int> _indices, vector<Textu
 
     this->setupMesh();
     CalculateNormals();
+    CalculateAABB();
 }
 
 Mesh::~Mesh() {
@@ -53,6 +54,80 @@ void Mesh::setupMesh() {
 
 
     
+}
+
+void Mesh::CalculateAABB() {
+    // Reset min/max a valores extremos
+    meshAABB.min = glm::vec3(std::numeric_limits<float>::max());
+    meshAABB.max = glm::vec3(std::numeric_limits<float>::lowest());
+
+    // Iterar sobre todos los vértices del mesh
+    for (const auto& vertex : vertices) {
+        // Actualizar min
+        meshAABB.min.x = std::min(meshAABB.min.x, vertex.Position.x);
+        meshAABB.min.y = std::min(meshAABB.min.y, vertex.Position.y);
+        meshAABB.min.z = std::min(meshAABB.min.z, vertex.Position.z);
+
+        // Actualizar max
+        meshAABB.max.x = std::max(meshAABB.max.x, vertex.Position.x);
+        meshAABB.max.y = std::max(meshAABB.max.y, vertex.Position.y);
+        meshAABB.max.z = std::max(meshAABB.max.z, vertex.Position.z);
+    }
+}
+
+void Mesh::DrawAABB(Shader& shader, const glm::mat4& modelMatrix, const glm::vec4& color) {
+
+    // Cambiar a modo wireframe
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    // Configurar la matriz del modelo (Transformación de World Space)
+    GLint modelLoc = glGetUniformLocation(shader.ID, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+    // Configurar color para visualización
+    glUniform1i(glGetUniformLocation(shader.ID, "useLineColor"), true);
+    glUniform4f(glGetUniformLocation(shader.ID, "lineColor"), color.r, color.g, color.b, color.a);
+    glLineWidth(2.0f); // Puedes ajustar el ancho de línea
+
+    glm::vec3 min = meshAABB.min;
+    glm::vec3 max = meshAABB.max;
+
+    // Definir los 8 vértices del AABB
+    glm::vec3 v[8] = {
+        glm::vec3(min.x, min.y, min.z), // 0
+        glm::vec3(max.x, min.y, min.z), // 1
+        glm::vec3(min.x, max.y, min.z), // 2
+        glm::vec3(max.x, max.y, min.z), // 3
+        glm::vec3(min.x, min.y, max.z), // 4
+        glm::vec3(max.x, min.y, max.z), // 5
+        glm::vec3(min.x, max.y, max.z), // 6
+        glm::vec3(max.x, max.y, max.z)  // 7
+    };
+
+    // Dibujar las 12 aristas usando GL_LINES
+    glBegin(GL_LINES);
+    // Cara inferior
+    glVertex3fv(glm::value_ptr(v[0])); glVertex3fv(glm::value_ptr(v[1]));
+    glVertex3fv(glm::value_ptr(v[1])); glVertex3fv(glm::value_ptr(v[5]));
+    glVertex3fv(glm::value_ptr(v[5])); glVertex3fv(glm::value_ptr(v[4]));
+    glVertex3fv(glm::value_ptr(v[4])); glVertex3fv(glm::value_ptr(v[0]));
+
+    // Cara superior
+    glVertex3fv(glm::value_ptr(v[2])); glVertex3fv(glm::value_ptr(v[3]));
+    glVertex3fv(glm::value_ptr(v[3])); glVertex3fv(glm::value_ptr(v[7]));
+    glVertex3fv(glm::value_ptr(v[7])); glVertex3fv(glm::value_ptr(v[6]));
+    glVertex3fv(glm::value_ptr(v[6])); glVertex3fv(glm::value_ptr(v[2]));
+
+    // Conexiones verticales
+    glVertex3fv(glm::value_ptr(v[0])); glVertex3fv(glm::value_ptr(v[2]));
+    glVertex3fv(glm::value_ptr(v[1])); glVertex3fv(glm::value_ptr(v[3]));
+    glVertex3fv(glm::value_ptr(v[5])); glVertex3fv(glm::value_ptr(v[7]));
+    glVertex3fv(glm::value_ptr(v[4])); glVertex3fv(glm::value_ptr(v[6]));
+    glEnd();
+
+    // Resetear el color de línea y el modo de polígono a relleno
+    glUniform1i(glGetUniformLocation(shader.ID, "useLineColor"), false);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void Mesh::Draw(Shader &shader) {

@@ -50,6 +50,8 @@ public:
 		return framesPerSecond;
 	}
 
+	void ProcessObjectSelection();
+
 private:
 
 	// Private constructor to prevent instantiation
@@ -129,5 +131,4 @@ private:
 	int maxFrameDuration = 16;
 
 	std::string gameTitle = "Vroom-Engine";
-
 };

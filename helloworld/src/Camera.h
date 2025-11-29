@@ -48,6 +48,11 @@ public:
     void ProcessScrollZoom(float delta, bool isMouseScroll);
     void FocusObject(bool firstTime);
 
+    glm::mat4 GetViewMatrix() const { return viewMat; }
+    glm::mat4 GetProjectionMatrix() const { return projectionMat; }
+
+    glm::vec3 ScreenPointToRay(float mouseX, float mouseY, int screenW, int screenH) const;
+
 private:
     void RecalculateMatrices(int windowW, int windowH);
 };
