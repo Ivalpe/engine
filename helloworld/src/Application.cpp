@@ -195,7 +195,6 @@ bool Application::PostUpdate()
 
 void Application::ProcessObjectSelection() {
 
-    // Comprobamos si se ha hecho click izquierdo
     if (input.get()->GetMouseButtonDown(SDL_BUTTON_LEFT) == KEY_DOWN) {
 
         if (guiManager.get()->GetIO() && guiManager.get()->GetIO()->WantCaptureMouse) {
@@ -203,13 +202,9 @@ void Application::ProcessObjectSelection() {
         }
 
         int mouseX, mouseY;
-        // La clase Input solo tiene GetMousePosition() que devuelve SDL_FPoint. 
-        // Si no tienes GetMousePosition(int&, int&), usa el miembro publico (o adaptalo)
         mouseX = input.get()->GetMousePosition().x;
         mouseY = input.get()->GetMousePosition().y;
 
-        // Evitar seleccionar si ImGui está activo (esto es conceptual, requiere ImGui::IsWindowHovered())
-        // Vamos a asumir que si el mouse está en (0,0) no seleccionamos.
         if (mouseX == 0 && mouseY == 0) return;
 
         // --- 1. Generación del Rayo ---
@@ -296,7 +291,7 @@ void Application::ProcessObjectSelection() {
                     float hitDistance = tmin_ray;
 
                     // 2.4 Determinar el Objeto más Cercano
-                    if (hitDistance < minDistance) {
+                    if (hitDistance > 0.1f && hitDistance < minDistance) {
                         minDistance = hitDistance;
                         hitObject = gameObject;
                     }

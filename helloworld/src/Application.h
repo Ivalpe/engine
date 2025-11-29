@@ -131,5 +131,4 @@ private:
 	int maxFrameDuration = 16;
 
 	std::string gameTitle = "Vroom-Engine";
-
 };
