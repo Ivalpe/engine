@@ -111,6 +111,9 @@ void GameObject::AddChild(std::shared_ptr<GameObject> child) {
         children.size());
 }
 
+
+//poner el child en el parent del parent
+
 void GameObject::RemoveChild(std::shared_ptr<GameObject> child) {
     if (!child) return;
 

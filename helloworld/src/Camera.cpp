@@ -147,6 +147,10 @@ bool Camera::Update(float dt)
 	RecalculateMatrices(windowW, windowH);
 
 	return true;
+
+	//multiplicar dt ala cam una en game y otra en editor 
+	//poner un if para mirar que dt tiene que usar
+
 }
 
 // Implementaciones de las funciones helper
