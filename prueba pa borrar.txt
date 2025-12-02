@@ -1,1 +1,10 @@
 https://www.youtube.com/watch?v=XMM3c136Cjo
+/scripting con lua/
+
+
+cargar modelos como fbx y que se cargue todo lo que tiene (luces camara)  y si pones otra vez el fbx que te ponga otra casa
+import de aisecene a ainode pasar a gameobject 
+
+
+guardar con la misma estructura que un json como si fuera una escena 
+octr usar el ppt de cuat pero div en 8
