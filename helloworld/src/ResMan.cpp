@@ -1,26 +1,141 @@
-#include "ResourceManager.h"
-#include <typeinfo> 
+ï»¿
+#include <typeinfo>
 #include <iostream>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include "ResMan.h"
 
-//Añadir includes de recursos concretos + el selection (a lo mejor en otro file?)
+// Usamos el namespace std::filesystem para las operaciones de archivo
+namespace fs = std::filesystem;
+
+// Constantes de Rutas
+const fs::path ASSETS_PATH = "Assets";
+// DEFINICIÃ“N CLAVE: LIBRARY_PATH = "Assets/Library"
+const fs::path LIBRARY_PATH = ASSETS_PATH / "Library";
+
+// NOTA: Se asume que las clases Resource, Mesh, Texture, etc., estÃ¡n definidas en ResMan.h
+// y que existe una clase Mesh (o similar) para el InternalLoad.
+
+// ---------------------------------------------------------------------
+// 1. Singleton y Constructor
+// ---------------------------------------------------------------------
 
 ResourceManager& ResourceManager::GetInstance() {
-    // La instancia se crea la primera vez que se llama a esta función.
-    // Es thread-safe desde C++11.
     static ResourceManager instance;
     return instance;
 }
 
+// Constructor (Llama a la configuraciÃ³n inicial de las carpetas)
+ResourceManager::ResourceManager() {
+    // Asegura que la carpeta Library exista y maneja la regeneraciÃ³n inicial
+    CheckAndSetupLibrary();
+}
+
 // ---------------------------------------------------------------------
-// 2. Lógica Interna de Carga y Cacheo
+// 1.5. LÃ³gica de InicializaciÃ³n y RegeneraciÃ³n
 // ---------------------------------------------------------------------
 
 /**
- * @brief Lógica central para verificar el caché, crear el recurso si es necesario y cargarlo.
- * * @param path La ruta del archivo en la carpeta "Library".
- * @param typeName El nombre del tipo de recurso solicitado (ej: "Mesh", "Texture").
- * @return std::shared_ptr<Resource> Puntero al recurso cargado o nullptr si falla.
+ * @brief Recorre Assets/ y, para cada archivo, crea un archivo .meta si no existe
+ * y (simula) la creaciÃ³n del recurso binario en Library/.
  */
+void ResourceManager::RegenerateLibrary() {
+    std::cout << "REGENERACIÃ“N: Iniciando proceso de regeneraciÃ³n de Library/." << std::endl;
+
+    // Recorrer de forma recursiva la carpeta Assets/
+    for (const auto& entry : fs::recursive_directory_iterator(ASSETS_PATH)) {
+
+        // ðŸš¨ LÃ“GICA DE EXCLUSIÃ“N: NECESARIA al tener Library/ dentro de Assets/ ðŸš¨
+        // Si la ruta del archivo que estamos escaneando empieza con LIBRARY_PATH, lo saltamos.
+        if (entry.path().string().find(LIBRARY_PATH.string()) == 0) {
+            continue;
+        }
+
+        if (entry.is_regular_file()) {
+            const fs::path assetPath = entry.path();
+
+            // 1. Manejar el archivo .meta asociado
+            fs::path metaPath = assetPath;
+            metaPath += ".meta";
+
+            if (!fs::exists(metaPath)) {
+                // Crear un nuevo archivo .meta (simulaciÃ³n)
+                std::ofstream metaFile(metaPath);
+                metaFile << "version: 1" << "\n";
+                metaFile << "import_settings: default";
+                metaFile.close();
+                std::cout << "  [META] Creado: " << metaPath.string() << std::endl;
+            }
+
+            // 2. Construir la ruta en Library/ 
+            std::string assetPathStr = assetPath.string();
+            // Calcula la ruta relativa a "Assets/"
+            std::string assetRelativePath = assetPathStr.substr(ASSETS_PATH.string().size());
+
+            // Eliminar el '/' inicial si existe
+            if (!assetRelativePath.empty() && assetRelativePath.front() == fs::path::preferred_separator) {
+                assetRelativePath.erase(0, 1);
+            }
+
+            // Construimos la ruta dentro de Assets/Library/
+            fs::path libraryItemPath = LIBRARY_PATH / assetRelativePath;
+
+            // Asegurar que la subcarpeta en Library/ exista
+            fs::path libraryDir = libraryItemPath.parent_path();
+            if (!fs::exists(libraryDir)) {
+                fs::create_directories(libraryDir);
+            }
+
+            // SimulaciÃ³n de la "importaciÃ³n" (CreaciÃ³n del archivo binario optimizado)
+            fs::path libraryItemFinalPath = libraryItemPath.string() + ".bin";
+
+            if (!fs::exists(libraryItemFinalPath)) {
+                std::ofstream libFile(libraryItemFinalPath);
+                libFile << "DATOS BINARIOS COMPRIMIDOS DEL RECURSO";
+                libFile.close();
+
+                std::cout << "  [IMPORT] Procesado: " << assetPath.string()
+                    << " -> Creado en " << libraryItemFinalPath.string() << std::endl;
+            }
+            else {
+                // LÃ³gica de motor: AquÃ­ se verificarÃ­a si el .meta o el asset original ha cambiado
+                std::cout << "  [SKIP] Archivo en Library/ ya existe: " << libraryItemFinalPath.string() << std::endl;
+            }
+        }
+    }
+    std::cout << "REGENERACIÃ“N: Proceso de regeneraciÃ³n finalizado." << std::endl;
+}
+
+/**
+ * @brief Comprueba y crea la carpeta Library. Si es necesario, la regenera.
+ */
+void ResourceManager::CheckAndSetupLibrary() {
+    std::cout << "GESTIÃ“N DE RECURSOS: Verificando carpetas Assets/ y " << LIBRARY_PATH.string() << "..." << std::endl;
+
+    // 2. Comprobar y Crear Library/
+    if (!fs::exists(LIBRARY_PATH)) {
+        std::cout << "INFO: La ruta " << LIBRARY_PATH.string() << " no existe. CreÃ¡ndola y regenerando recursos..." << std::endl;
+
+        // fs::create_directories crea todas las carpetas necesarias ("Assets" y "Assets/Library")
+        if (fs::create_directories(LIBRARY_PATH)) {
+            std::cout << "INFO: Creada la ruta completa: " << LIBRARY_PATH.string() << std::endl;
+            RegenerateLibrary(); // Llama a la lÃ³gica de regeneraciÃ³n
+        }
+        else {
+            std::cerr << "ERROR: No se pudo crear el directorio " << LIBRARY_PATH.string() << ". Verifique permisos." << std::endl;
+        }
+    }
+    else {
+        std::cout << "INFO: La ruta " << LIBRARY_PATH.string() << " existe. Listo para cargar recursos." << std::endl;
+    }
+}
+
+
+// ---------------------------------------------------------------------
+// 2. LÃ³gica Interna de Carga y Cacheo
+// ---------------------------------------------------------------------
+
 std::shared_ptr<Resource> ResourceManager::InternalLoad(const std::string& path, const std::string& typeName) {
     // 1. Verificar Cache (CACHE HIT)
     if (m_resources.count(path)) {
@@ -30,33 +145,20 @@ std::shared_ptr<Resource> ResourceManager::InternalLoad(const std::string& path,
 
     // 2. No encontrado: crear nuevo recurso (CACHE MISS)
     std::shared_ptr<Resource> newResource = nullptr;
-
-    // --- Lógica de Factory (Creación de la clase concreta) ---
-    // NOTA: typeName viene del typeid(T).name(), que puede ser mangled. 
-    // Usamos .find() para ser más robustos en la prueba.
-
-    // En un motor real, usarías una forma más fiable que typeid(T).name() 
-    // para la creación de la instancia, como un sistema de Factory registrado.
-
-    // Aquí usamos Mesh como ejemplo.
+    // --- LÃ³gica de Factory (CreaciÃ³n de la clase concreta) ---
     if (typeName.find("Mesh") != std::string::npos) {
         newResource = std::make_shared<Mesh>();
     }
-    // else if (typeName.find("Texture") != std::string::npos) {
-    //     newResource = std::make_shared<Texture>();
-    // } 
     else {
         std::cerr << "ERROR: Tipo de recurso no soportado: " << typeName << std::endl;
         return nullptr;
     }
 
-    // 3. Cargar datos desde Library y añadir a la caché
+    // 3. Cargar datos desde Library y aÃ±adir a la cachÃ©
     if (newResource) {
         newResource->SetPath(path);
-
-        // Llamada a la carga específica (Mesh::Load(), Texture::Load(), etc.)
+        // La ruta 'path' debe apuntar al archivo optimizado en Library/
         newResource->Load();
-
         m_resources[path] = newResource;
         std::cout << "CACHE MISS: Recurso " << typeName << " CREADO y CARGADO en " << path << std::endl;
     }
@@ -68,24 +170,14 @@ std::shared_ptr<Resource> ResourceManager::InternalLoad(const std::string& path,
 // 3. Destructor y Limpieza de Recursos
 // ---------------------------------------------------------------------
 
-/**
- * @brief Limpia explícitamente la caché de recursos.
- */
 void ResourceManager::CleanUp() {
-    // Al llamar a clear(), el std::unordered_map borra todos sus std::shared_ptr.
-    // Cuando el shared_ptr se destruye, si su Reference Count llega a 0, 
-    // el destructor del objeto Resource (y de la clase derivada) es llamado.
     if (!m_resources.empty()) {
-        std::cout << "GESTIÓN DE RECURSOS: Limpiando " << m_resources.size() << " recursos en caché." << std::endl;
+        std::cout << "GESTIÃ“N DE RECURSOS: Limpiando " << m_resources.size() << " recursos en cachÃ©." << std::endl;
         m_resources.clear();
     }
 }
 
-/**
- * @brief Destructor del ResourceManager.
- */
 ResourceManager::~ResourceManager() {
-    // Aseguramos que la caché se vacíe al salir del programa.
     CleanUp();
-    std::cout << "GESTIÓN DE RECURSOS: Gestor destruido." << std::endl;
+    std::cout << "GESTIÃ“N DE RECURSOS: Gestor destruido." << std::endl;
 }
