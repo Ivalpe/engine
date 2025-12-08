@@ -1,6 +1,7 @@
 #include "MaterialComponent.h"
 #include "GameObject.h"
 #include "Application.h"
+#include "ResourceTexture.h" // Asegurar include
 
 MaterialComponent::MaterialComponent(std::shared_ptr<GameObject> owner)
     : Component(owner, ComponentType::MATERIAL),
@@ -8,29 +9,15 @@ MaterialComponent::MaterialComponent(std::shared_ptr<GameObject> owner)
     shininess(32.0f),
     metallic(0.0f),
     roughness(0.5f) {
-
-    
-    
 }
 
 MaterialComponent::~MaterialComponent() {
-    // Nothing to clean up
+    // Punteros inteligentes se limpian solos
 }
 
-void MaterialComponent::Enable() {
-    // Material enabled
-}
-
-void MaterialComponent::Update() {
-    // Materials don't need per-frame updates
-}
-
-void MaterialComponent::Disable() {
-    // Material disabled
-}
-
+void MaterialComponent::Enable() {}
+void MaterialComponent::Update() {}
+void MaterialComponent::Disable() {}
 void MaterialComponent::OnEditor() {
-    //laracode aqui imgui
+    // Aquí iría tu código de ImGui
 }
-
-

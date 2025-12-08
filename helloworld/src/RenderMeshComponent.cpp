@@ -3,71 +3,48 @@
 #include "MaterialComponent.h"
 #include "GameObject.h"
 #include "Shader.h"
-
+#include "Log.h"
 
 RenderMeshComponent::RenderMeshComponent(std::shared_ptr<GameObject> owner)
-    : Component(owner, ComponentType::MESH_RENDERER),
-    mesh(nullptr) {
+    : Component(owner, ComponentType::MESH_RENDERER), mesh(nullptr) {
 }
 
 RenderMeshComponent::~RenderMeshComponent() {
-    
     mesh = nullptr;
 }
 
-void RenderMeshComponent::Enable() {
-    // Component enabled
-}
-
-void RenderMeshComponent::Update() {
-    
-}
-
-void RenderMeshComponent::Disable() {
-    // Component disabled
-}
-
+void RenderMeshComponent::Enable() {}
+void RenderMeshComponent::Update() {}
+void RenderMeshComponent::Disable() {}
 void RenderMeshComponent::OnEditor() {
-    //laracode aqui
+    // Aquí puedes añadir ImGui para ver el UID del mesh, etc.
 }
 
-void RenderMeshComponent::SetMesh(std::shared_ptr<Mesh> newMesh) {
+void RenderMeshComponent::SetMesh(std::shared_ptr<ResourceMesh> newMesh) {
     mesh = newMesh;
+    if (mesh) mesh->LoadInMemory(); // Aseguramos que esté cargado al asignar
 }
 
 void RenderMeshComponent::Render(Shader* shader) {
-    if (!mesh || !active || !shader) return;
-    
+    if (!active || !shader) return;
+
+    // Si no hay mesh o no está cargado en VRAM, intentamos cargarlo
+    if (!mesh) return;
+    if (!mesh->IsLoaded()) mesh->LoadInMemory();
+
     auto sharedOwner = owner.lock();
     if (!sharedOwner) return;
-    // Get transform component to apply transformations
-    
+
     auto transform = std::dynamic_pointer_cast<TransformComponent>(sharedOwner->GetComponent(ComponentType::TRANSFORM));
-    if (!transform)
-        return;
-    
-    
-   
+    if (!transform) return;
+
+    // Material handling (Simplificado para el ejemplo)
     auto material = std::dynamic_pointer_cast<MaterialComponent>(sharedOwner->GetComponent(ComponentType::MATERIAL));
-    if (!material)
-        return;
-    
-    
-    // Apply transformation matrix
-    
-    glm::mat4 modelMatrix = transform->GetGlobalTransform();
-    
-    
 
-    // Set the model matrix in the shader
-    shader->setMat4("model", modelMatrix);
+    // Set uniforms
+    shader->Use();
+    shader->SetMat4("model", transform->GetGlobalTransform());
 
-    mesh->Draw(*shader);
+    // Pintar usando el recurso
+    mesh->BindAndDraw();
 }
-
-
-//void RenderMeshComponent::DrawNormals() {
-//    
-//    mesh->CalculateNormals();
-//}
-

@@ -1,7 +1,7 @@
 #pragma once
 #include "Module.h"
 #include "Shader.h"
-
+#include <vector>
 #include "Model.h"
 
 class OpenGL : public Module {
@@ -16,15 +16,14 @@ public:
 	unsigned int VBO;
 	unsigned int EBO;
 
-	/*Texture texture1, texture2;*/
+	
 	int width, height, nChannels;
 	glm::mat4 modelMat, viewMat, projectionMat;
-	glm::vec3* cubePositions = new glm::vec3[10];
+	glm::vec3* cubePositions = nullptr;
 
 	Shader* texCoordsShader;
 	Model* ourModel;
-	vector<Model*> modelObjects;
-
+	std::vector<Model*> modelObjects;
 
 	bool Start() override;
 	bool Update(float dt) override;

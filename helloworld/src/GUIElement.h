@@ -8,7 +8,11 @@
 
 #include "Module.h"
 #include "FileSystem.h"
-#include "GameObject.h"
+//#include "GameObject.h"
+#include <memory>
+
+class GameObject; // Forward declaration
+class GUIManager;
 
 enum ElementType{ Additional, MenuBar, Console, Config, Hierarchy, Inspector};
 

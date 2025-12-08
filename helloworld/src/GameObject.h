@@ -1,20 +1,19 @@
 #pragma once
 
 #include "Component.h"
-#include "TransformComponent.h"
-#include "Mesh.h"
-#include "Model.h"
 #include <vector>
 #include <string>
 #include <memory>
 
+// Forward declarations
 class Model;
+class TransformComponent;
 
 class GameObject : public std::enable_shared_from_this<GameObject> {
 public:
     // Constructor
     GameObject(const std::string& name = "GameObject");
-    ~GameObject(); // Destructor can remain trivial; shared_ptr handles cleanup
+    ~GameObject();
 
     // Update this GameObject and its children
     void Update();
@@ -49,14 +48,13 @@ public:
         isEmpty = true;
     }
 
-    void SetOwnerModel(Model* model) { 
-        ownerModel = model; 
+    void SetOwnerModel(Model* model) {
+        ownerModel = model;
     }
 
-    Model* GetOwnerModel() { 
-        return ownerModel; 
+    Model* GetOwnerModel() {
+        return ownerModel;
     }
-
 
 private:
     std::string name;
@@ -64,10 +62,10 @@ private:
     bool markedForDestroy = false;
     bool isEmpty = false;
 
-    //store model owner for root objects
+    // Store model owner for root objects
     Model* ownerModel = nullptr;
 
-    std::weak_ptr<GameObject> parent;                          // Weak pointer to parent
-    std::vector<std::shared_ptr<GameObject>> children;         // Shared pointers to children
-    std::vector<std::shared_ptr<Component>> Components;        // Components are shared_ptr
+    std::weak_ptr<GameObject> parent;
+    std::vector<std::shared_ptr<GameObject>> children;
+    std::vector<std::shared_ptr<Component>> Components;
 };

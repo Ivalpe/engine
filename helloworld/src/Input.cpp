@@ -4,44 +4,41 @@
 #include "GUIManager.h"
 #include "Log.h"
 #include "OpenGL.h"
+
+// Includes de sistema y contenedores PRIMERO para evitar errores de plantillas
+#include <vector>
+#include <string>
+#include <filesystem>
+#include <iostream>
+#include <algorithm>
+
+// Componentes y lógica del motor
 #include "GameObject.h"
 #include "Component.h"
 #include "RenderMeshComponent.h"
-#include <string>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
 #include "Model.h"
 #include "Render.h"
+#include "ModelImporter.h" // Necesario para importar al soltar archivos
+#include "ResMan.h"
 
 #include "SDL3/SDL.h"
-#include <vector>
-
 
 using namespace std;
-class RenderMeshComponent;
 
 Input::Input() : Module()
 {
 	name = "input";
 
 	keyboard = new KeyState[MAX_KEYS];
-	numkeys = new int[MAX_KEYS];
 	memset(keyboard, KEY_IDLE, sizeof(KeyState) * MAX_KEYS);
 	memset(mouseButtons, KEY_IDLE, sizeof(KeyState) * NUM_MOUSE_BUTTONS);
-
 }
 
-
-//TODO: DRAG AND DROP FUNCTION THAT IMPORTS * file type * TO SCENE
-
-// Destructor
 Input::~Input()
 {
 	delete[] keyboard;
 }
 
-// Called before render is available
 bool Input::Awake()
 {
 	LOG("Init SDL input event system");
@@ -57,20 +54,17 @@ bool Input::Awake()
 	return ret;
 }
 
-// Called before the first frame
 bool Input::Start()
 {
-	SDL_StopTextInput(Application::GetInstance().window.get()->window);
+	SDL_StopTextInput();
 	return true;
 }
 
-// Called each loop iteration
 bool Input::PreUpdate()
 {
-	static SDL_Event event;
+	SDL_Event event;
 
-	int numkeys = 0; // will receive the number of keys
-	const bool* keys = SDL_GetKeyboardState(&numkeys);
+	const Uint8* keys = SDL_GetKeyboardState(NULL);
 
 	for (int i = 0; i < MAX_KEYS; ++i)
 	{
@@ -98,44 +92,23 @@ bool Input::PreUpdate()
 		if (mouseButtons[i] == KEY_UP)
 			mouseButtons[i] = KEY_IDLE;
 	}
-	int w, h = 0;
+
 	while (SDL_PollEvent(&event) != 0)
 	{
-		Application::GetInstance().guiManager.get()->ProcessEvents(event);
+		// Pasar eventos a ImGui
+		Application::GetInstance().guiManager->ProcessEvents(event);
+
 		switch (event.type)
 		{
 		case SDL_EVENT_QUIT:
 			windowEvents[WE_QUIT] = true;
 			break;
 
-			/*case SDL_EVENT_WINDOW_RESIZED:*/
 		case SDL_EVENT_WINDOW_RESIZED:
-			w = event.window.data1;
-			h = event.window.data2;
-
-			//make sure window values are set accordingly
-			Application::GetInstance().window.get()->width = w;
-			Application::GetInstance().window.get()->height = h;
-
-			//handle opengl window on resize
-			glViewport(0,0,w, h);
+		case SDL_EVENT_WINDOW_SIZE_CHANGED:
+			Application::GetInstance().window->SetWindowSize(glm::vec2(event.window.data1, event.window.data2));
+			Application::GetInstance().render->ResetViewPort();
 			break;
-			/*case SDL_WINDOWEVENT_LEAVE:*/
-		case SDL_EVENT_WINDOW_HIDDEN:
-		case SDL_EVENT_WINDOW_MINIMIZED:
-		case SDL_EVENT_WINDOW_FOCUS_LOST:
-			windowEvents[WE_HIDE] = true;
-			break;
-
-			//case SDL_WINDOWEVENT_ENTER:
-		case SDL_EVENT_WINDOW_SHOWN:
-		case SDL_EVENT_WINDOW_FOCUS_GAINED:
-		case SDL_EVENT_WINDOW_MAXIMIZED:
-		case SDL_EVENT_WINDOW_RESTORED:
-			windowEvents[WE_SHOW] = true;
-			break;
-
-
 
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			mouseButtons[event.button.button - 1] = KEY_DOWN;
@@ -143,199 +116,70 @@ bool Input::PreUpdate()
 
 		case SDL_EVENT_MOUSE_BUTTON_UP:
 			mouseButtons[event.button.button - 1] = KEY_UP;
-
-			
-			break;
-
-
-		case SDL_EVENT_DROP_FILE:
-			/*windowID = Application::GetInstance().window.get()->GetWindowID();*/
-			droppedFileDir = event.drop.data;
-			
-			
-			
-
-			ProcessDroppedFile(droppedFileDir);
-			
-			
-			
-			//not needed in SDL3, the new allocated memory created  gets freed automatically
-			/*SDL_free(&droppedFileDir);*/
-			break;
-
-		case SDL_EVENT_MOUSE_WHEEL:
-			mouseWheelY = event.wheel.y;
 			break;
 
 		case SDL_EVENT_MOUSE_MOTION:
-			int scale = Application::GetInstance().window.get()->GetScale();
-			mouseMotionX = event.motion.xrel / scale;
-			mouseMotionY = event.motion.yrel / scale;
-			mouseX = event.motion.x / scale;
-			mouseY = event.motion.y / scale;
+			mouseMotionX = event.motion.xrel;
+			mouseMotionY = event.motion.yrel;
+			mouseX = event.motion.x;
+			mouseY = event.motion.y;
 			break;
 
+			// --- DRAG AND DROP IMPLEMENTATION ---
+		case SDL_EVENT_DROP_FILE:
+		{
+			char* droppedFile = event.drop.file;
+			if (droppedFile != nullptr)
+			{
+				std::string path(droppedFile);
+				LOG("File Dropped: %s", path.c_str());
 
+				// Obtener extensión para saber qué hacer
+				std::string extension = std::filesystem::path(path).extension().string();
+				// Convertir a minúsculas para comparar
+				std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+				if (extension == ".fbx" || extension == ".obj")
+				{
+					// 1. Crear nuevo Modelo (esto dispara el ModelImporter internamente en el constructor de Model)
+					Model* newModel = new Model(path);
+
+					// 2. Añadir a la lista de OpenGL para renderizado y actualización
+					if (Application::GetInstance().openGL) {
+						Application::GetInstance().openGL->modelObjects.push_back(newModel);
+
+						// 3. Añadir root object a la jerarquía del GUI
+						if (newModel->GetRootGameObject()) {
+							Application::GetInstance().guiManager->sceneObjects.push_back(newModel->GetRootGameObject());
+						}
+					}
+				}
+				else if (extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".tga")
+				{
+					// TODO: Implementar Drag & Drop de texturas
+					// Ahora deberías usar ResourceManager::CreateResource(ResourceType::TEXTURE, ...)
+					// O TextureImporter::Import(...)
+					LOG("Texture drop detected. Logic pending implementation of TextureImporter.");
+				}
+				else
+				{
+					LOG("Unknown file format dropped.");
+				}
+
+				// Liberar memoria asignada por SDL
+				// SDL_free(droppedFile); // SDL3 puede requerir esto o no dependiendo de la versión exacta, revisar docs.
+			}
+			break;
+		}
 		}
 	}
 
 	return true;
 }
 
-// Called before quitting
 bool Input::CleanUp()
 {
 	LOG("Quitting SDL event subsystem");
 	SDL_QuitSubSystem(SDL_INIT_EVENTS);
 	return true;
 }
-
-void Input::ProcessDroppedFile(std::string sourcePath) {
-
-	std::replace(sourcePath.begin(), sourcePath.end(), '\\', '/');
-
-	LOG("Dropped File Directory = %s", sourcePath.c_str());
-		
-	//find last dot of directory to get file extension (.fbx, .obj, .png, .jpg, etc)
-
-	//handle model files
-	string fileExtension = sourcePath.substr(sourcePath.find_last_of(".") + 1);
-	if (fileExtension == "fbx" || fileExtension == "FBX" || fileExtension == "obj") {
-		importedModel = new Model(droppedFileDir);
-		Application::GetInstance().render.get()->AddModel(importedModel);
-		Application::GetInstance().openGL.get()->modelObjects.push_back(importedModel);
-	}
-
-	//handle image files
-	else if (fileExtension == "png" || fileExtension == "jpg" || fileExtension == "tga" || fileExtension == "dds") {
-		std::shared_ptr<GameObject> selectedObj = Application::GetInstance().guiManager.get()->selectedObject;
-
-		if (!selectedObj) {
-			LOG("No GameObject Selected. Select a GameObject in the hierarchy and try again");
-			return;
-		}
-
-		auto meshComp = std::dynamic_pointer_cast<RenderMeshComponent>(
-			selectedObj->GetComponent(ComponentType::MESH_RENDERER)
-		);
-
-		if (!meshComp) {
-			LOG("You selected an empty GameObject. Select a GameObject from the hierarchy with a mesh and try again");
-			return;
-		}
-
-		// Get MaterialComponent
-		auto materialComp = std::dynamic_pointer_cast<MaterialComponent>(
-			selectedObj->GetComponent(ComponentType::MATERIAL)
-		);
-
-		if (!materialComp) {
-			LOG("No MaterialComponent found, creating one");
-			selectedObj->AddComponent(ComponentType::MATERIAL);
-			materialComp = std::dynamic_pointer_cast<MaterialComponent>(
-				selectedObj->GetComponent(ComponentType::MATERIAL)
-			);
-		}
-
-		if (!materialComp) {
-			LOG("ERROR: Failed to get/create MaterialComponent");
-			return;
-		}
-
-		// Load the dropped texture
-		string fileName = sourcePath.substr(sourcePath.find_last_of('/') + 1);
-		auto droppedTex = std::make_shared<Texture>();
-		bool success = droppedTex->TextureFromFile(sourcePath, fileName.c_str());
-
-		if (!success || droppedTex->id == 0) {
-			LOG("ERROR: Failed to load texture: %s", sourcePath.c_str());
-			return;
-		}
-
-		droppedTex->mapType = "texture_diffuse";
-		droppedTex->path = sourcePath;
-
-		// Set it on the MaterialComponent
-		materialComp->SetDiffuseMap(droppedTex);
-
-		// Also add to mesh textures (for your current rendering system)
-		auto meshPtr = meshComp->GetMesh();
-		if (meshPtr) {
-			// Clear old textures and add new one
-			meshPtr->textures.clear();
-			meshPtr->textures.push_back(*droppedTex);
-		}
-
-		// KEY FIX: Update the parent model's savedTexture
-		auto parentModel = Application::GetInstance().guiManager.get()->FindGameObjectModel(selectedObj);
-		if (parentModel) {
-			parentModel->savedTexture = droppedTex;  // Save the new texture
-			parentModel->useDefaultTexture = false;   // Make sure checker is off
-
-			// Also update originalTextures map if it exists
-			if (meshPtr && parentModel->originalTextures.find(meshPtr) != parentModel->originalTextures.end()) {
-				parentModel->originalTextures[meshPtr].clear();
-				parentModel->originalTextures[meshPtr].push_back(*droppedTex);
-			}
-		}
-
-		LOG("Texture '%s' (ID: %d) applied to '%s'",
-			fileName.c_str(),
-			droppedTex->id,
-			selectedObj->GetName().c_str());
-
-		// Add to global texture cache
-		Application::GetInstance().textures.get()->textures_loaded.push_back(*droppedTex);
-	}
-	
-}
-
-bool Input::GetWindowEvent(EventWindow ev)
-{
-	return windowEvents[ev];
-}
-
-
-glm::vec3 Input::MouseRay(int mouseX, int mouseY, const glm::mat4& projection, const glm::mat4& view) {
-
-	int windowW, windowH;
-	Application::GetInstance().window.get()->GetSize(windowW,windowH);
-
-	float normalizedX = (2.0f * mouseX) / windowW - 1.0f;
-	float normalizedY = 1.0f - (2.0f * mouseY) / windowH; 
-	//y in 2D is greater the further down you go, but in 3D, it's the other way around! flip it by 1-(normalized2Dy)
-
-	glm::vec4 clipCoords = glm::vec4(normalizedX, normalizedY, -1.0f, 1.0f);  
-	// -1.0 = nearPlane in normalized depth space | w = 1.0 --> homogeneous coord
-
-	/*
-	mouse coords are in screen space, but we want a ray in world space (that starts at camera and goes into the scene)
-	we need to convert (mouseX, mouseY) multiplying by (inverse) projection matrix, and then (inverse) view matrix
-	*/
-
-	glm::vec4 viewCoords = glm::inverse(projection) * clipCoords; //screen space --> cam (local) space
-	viewCoords = glm::vec4(viewCoords.x, viewCoords.y, -1.0f, 0.0f);
-	// z = -1 --> forward dir | w = 0 --> applies no translation
-	// just keeps it as a direction (we just need to rotate, otherwise the direction vector will get offseted)
-	 
-	glm::vec4 worldCoords = glm::inverse(view) * viewCoords;  //cam (local) space --> world space
-	
-	glm::vec3 rayDirection = glm::normalize(glm::vec3(worldCoords)); 
-	//normalize vector (we don't care about its lenght, just direction)
-	
-
-	return rayDirection;
-
-}
-
-
-SDL_FPoint Input::GetMousePosition()
-{
-	return { (float)mouseX, (float)mouseY };
-}
-
-SDL_FPoint Input::GetMouseMotion()
-{
-	return {(float)(mouseMotionX, (float)mouseMotionY)};
-}
-
