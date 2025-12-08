@@ -105,7 +105,7 @@ bool Input::PreUpdate()
 			break;
 
 		case SDL_EVENT_WINDOW_RESIZED:
-		case SDL_EVENT_WINDOW_SIZE_CHANGED:
+		case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
 			Application::GetInstance().window->SetWindowSize(glm::vec2(event.window.data1, event.window.data2));
 			Application::GetInstance().render->ResetViewPort();
 			break;
