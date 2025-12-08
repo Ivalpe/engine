@@ -181,3 +181,30 @@ ResourceManager::~ResourceManager() {
     CleanUp();
     std::cout << "GESTIÓN DE RECURSOS: Gestor destruido." << std::endl;
 }
+
+
+//to do
+//● Los modelos, las mallas y las texturas se guardan en vuestro formato propio en la carpeta
+//“Library” - La escena se puede serializar a un fichero que se puede cargar. ESTO TB SE PUEDE PONER EN RESMAN TAMPOCO afeCta tanto
+//
+//● Manejo de recursos :
+// 
+//○ Hay una ventana de “Assets” que le muestra al usuario los assets.Puede ser un
+//simple visualizador de árbol.
+// Añadir en gui otra ventana como la de la irquierda
+// 
+//○ El usuario puede drop / importar nuevos ficheros.La ventana de assets reacciona
+//acorde. ESTO SE PUEDE PONER EN RESMAN
+// 
+//○ Los ficheros de assets se pueden borrar a través de la ventana y los
+//correspondientes ficheros de / Library también se eliminan x2
+// 
+//○ Durante el inicio del motor, todos los recursos no manejados aún en assets se
+//crean en Library / .SUPONGO Q LA CASA
+// 
+//○ La carpeta / Library debería regenerarse desde la carpeta / Assets mas los
+//contenidos del fichero.meta ESTO NO VA POR LA CARA
+// 
+//○ Todos los recursos cuentan las referencias(e.g.una textura / malla está solo una
+//    vez en memoria sin importar cuantos GameObjects la usen).Ese proceso debería
+//    poder visualizarse en el editor ESTO? UN POCO XD
