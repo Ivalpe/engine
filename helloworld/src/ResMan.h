@@ -1,28 +1,44 @@
+
 #pragma once
-#include "Module.h"
-#include "Resource.h"
-#include <unordered_map>
-#include <memory>
+//include  las cargas y meshes
+#include "Model.h"
+#include "GameObject.h"
+#include "Mesh.h"
 #include <string>
+#include <memory>         
+#include <unordered_map>  
 
-class ResourceManager : public Module {
-public:
-    ResourceManager();
-    ~ResourceManager();
+              
+        class Resource;
+        class Mesh;
+        class Texture;
+        class Lighting;
+        class Shader;
+        class Material;
 
-    static ResourceManager& GetInstance();
+        class ResourceManager {
+        public:
+            
+            static ResourceManager& GetInstance();
 
-    bool Awake() override;
-    bool CleanUp() override;
+            template <typename T>
+            std::shared_ptr<T> Load(const std::string& path);
 
-    // Método principal para obtener recursos
-    // Si ya está en memoria, devuelve el puntero. Si no, lo carga.
-    std::shared_ptr<Resource> GetResource(uint32_t uid);
+           
+            void CleanUp();
 
-    // Método para crear un NUEVO recurso (importación)
-    std::shared_ptr<Resource> CreateResource(ResourceType type, uint32_t uid, const std::string& assetsPath);
+        private:
+           
+            ResourceManager() = default;
+            ~ResourceManager();
+            ResourceManager(const ResourceManager&) = delete;
+            ResourceManager& operator=(const ResourceManager&) = delete;
 
-private:
-    // Mapa de UID -> Recurso cargado
-    std::unordered_map<uint32_t, std::shared_ptr<Resource>> resources;
-};
+
+            std::unordered_map<std::string, std::shared_ptr<Resource>> m_resources;
+
+            // Opcional: Método interno para cargar el recurso (esto es del gm)
+            std::shared_ptr<Resource> InternalLoad(const std::string& path, const std::string& typeName);
+        };
+
+    

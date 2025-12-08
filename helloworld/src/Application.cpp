@@ -7,16 +7,21 @@
 #include "Render.h"
 #include "OpenGL.h"
 #include "FileSystem.h"
+#include "Textures.h"
 
 #include "GUIManager.h"
 #include "RenderMeshComponent.h"
 #include "TransformComponent.h"
 #include "Camera.h"
-#include "ResourceMesh.h"
-#include "ResMan.h" // Añadimos el ResourceManager
+#include "Mesh.h"
+#include <limits>
+#include <algorithm>
+
+
 
 // Constructor
 Application::Application() {
+
     LOG("Constructor Application::Application");
 
     // Modules
@@ -26,21 +31,23 @@ Application::Application() {
     render = std::make_shared<Render>();
     openGL = std::make_shared<OpenGL>();
     fileSystem = std::make_shared<FileSystem>();
+    textures = std::make_shared<Texture>();
     camera = std::make_shared<Camera>();
 
-    // Inicializar el Singleton de ResMan si es necesario o añadirlo como módulo si lo hiciste heredar de Module
-    // Si ResMan es un singleton puro, se inicializa al llamar GetInstance().
-
     // Ordered for awake / Start / Update
+    // Reverse order of CleanUp
     AddModule(std::static_pointer_cast<Module>(window));
     AddModule(std::static_pointer_cast<Module>(guiManager));
     AddModule(std::static_pointer_cast<Module>(input));
+    AddModule(std::static_pointer_cast<Module>(textures));
     AddModule(std::static_pointer_cast<Module>(camera));
+
 
     // Render last 
     AddModule(std::static_pointer_cast<Module>(openGL));
     AddModule(std::static_pointer_cast<Module>(fileSystem));
     AddModule(std::static_pointer_cast<Module>(render));
+
 }
 
 // Static method to get the instance of the Application class, following the singletn pattern

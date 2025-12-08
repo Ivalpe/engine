@@ -4,7 +4,7 @@
 #include "Application.h"
 #include "Window.h"
 #include "Render.h"
-#include "ResourceTexture.h"
+#include "Textures.h"
 #include "stb_image.h"
 #include "Model.h"
 #include "Input.h"

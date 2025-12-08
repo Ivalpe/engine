@@ -1,9 +1,10 @@
 #pragma once
 #include "Component.h"
-#include "ResourceMesh.h" // Importante: Usamos el nuevo recurso
-#include <memory>
+#include "Mesh.h"  
+#include "MaterialComponent.h"
 
-class Shader;
+class Shader;  // Forward declaration
+
 
 class RenderMeshComponent : public Component {
 public:
@@ -17,17 +18,18 @@ public:
     void OnEditor() override;
 
     // Mesh management
-    void SetMesh(std::shared_ptr<ResourceMesh> newMesh);
-    std::shared_ptr<ResourceMesh> GetMesh() const { return mesh; }
+    void SetMesh(std::shared_ptr<Mesh> newMesh);
+    std::shared_ptr<Mesh>  GetMesh() const { return mesh; }
+    Mesh*  GetMeshPointer() const { return mesh.get(); }
 
     // Rendering
-    void Render(Shader* shader);
+    void Render(Shader* shader);  
 
     bool drawAABB = false;
     void ToggleAABB(bool state) { drawAABB = state; }
 
 private:
-    std::shared_ptr<ResourceMesh> mesh; // Ahora es ResourceMesh
-    bool drawFaceNormals = false;
-    bool drawVertNormals = false;
+    std::shared_ptr<Mesh> mesh;  // Pointer to mesh data (not owned by this component)
+    bool drawFaceNormals;
+    bool drawVertNormals;
 };

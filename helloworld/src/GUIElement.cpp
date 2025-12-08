@@ -11,7 +11,7 @@
 #include "TransformComponent.h"
 #include "RenderMeshComponent.h"
 #include "MaterialComponent.h"
-#include "ResourceTexture.h"
+#include "Textures.h"
 #include "Render.h"
 
 #include <SDL3/SDL_opengl.h>

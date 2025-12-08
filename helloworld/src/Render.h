@@ -5,7 +5,7 @@
 #include "FileSystem.h"
 #include <vector>
 
-class Model; 
+
 
 
 class Render : public Module
@@ -33,8 +33,6 @@ public:
 
 	void SetViewPort(const SDL_Rect& rect);
 	void ResetViewPort();
-
-	std::vector<Model*> modelsToDraw;
 
 	// Drawing
 	bool DrawTexture(SDL_Texture* texture, int x, int y, const SDL_Rect* section = NULL, float speed = 1.0f, double angle = 0, int pivotX = INT_MAX, int pivotY = INT_MAX) const;

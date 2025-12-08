@@ -9,6 +9,7 @@ GameObject::GameObject(const std::string& name_)
     : name(name_), active(true) {
 }
 
+// No manual deletion needed; shared_ptr cleans up automatically
 GameObject::~GameObject() {
     Components.clear();
     children.clear();
@@ -42,22 +43,20 @@ std::shared_ptr<Component> GameObject::AddComponent(ComponentType type) {
         LOG("Added MATERIAL component to GameObject '%s'", name.c_str());
         break;
     default:
-        LOG("Unknown ComponentType");
+        LOG("WARNING: Attempted to add unknown component type to '%s'", name.c_str());
         return nullptr;
     }
 
-    if (newComponent) {
+    if (newComponent)
         Components.push_back(newComponent);
-    }
 
     return newComponent;
 }
 
 std::shared_ptr<Component> GameObject::GetComponent(ComponentType type) {
     for (auto& comp : Components) {
-        if (comp->GetType() == type) {
+        if (comp && comp->GetType() == type)
             return comp;
-        }
     }
     return nullptr;
 }
@@ -65,16 +64,14 @@ std::shared_ptr<Component> GameObject::GetComponent(ComponentType type) {
 void GameObject::RemoveComponent(ComponentType type) {
     auto it = std::remove_if(Components.begin(), Components.end(),
         [type](const std::shared_ptr<Component>& comp) {
-            return comp->GetType() == type;
+            return comp && comp->GetType() == type;
         });
-
-    if (it != Components.end()) {
-        Components.erase(it, Components.end());
-        LOG("Removed component of type %d from GameObject '%s'", type, name.c_str());
-    }
+    Components.erase(it, Components.end());
 }
 
 void GameObject::SetActive(bool isActive) {
+    if (active == isActive) return;
+
     active = isActive;
     for (auto& child : children)
         if (child)
@@ -82,6 +79,10 @@ void GameObject::SetActive(bool isActive) {
 }
 
 void GameObject::SetParent(std::shared_ptr<GameObject> newParent) {
+    LOG("Setting parent of '%s' to '%s'",
+        name.c_str(),
+        newParent ? newParent->GetName().c_str() : "NULL");
+
     // Remove from current parent
     if (auto currentParent = parent.lock()) {
         currentParent->RemoveChild(shared_from_this());
@@ -94,14 +95,6 @@ void GameObject::SetParent(std::shared_ptr<GameObject> newParent) {
     }
 }
 
-std::shared_ptr<GameObject> GameObject::GetParent() const {
-    return parent.lock();
-}
-
-const std::vector<std::shared_ptr<GameObject>>& GameObject::GetChildren() const {
-    return children;
-}
-
 void GameObject::AddChild(std::shared_ptr<GameObject> child) {
     if (!child) return;
 
@@ -110,7 +103,12 @@ void GameObject::AddChild(std::shared_ptr<GameObject> child) {
         return;
 
     children.push_back(child);
-    child->parent = shared_from_this(); // Direct assignment since friend/access allows or setter usage
+    child->parent = shared_from_this();
+
+    LOG("Added child '%s' to '%s' (Total children: %zu)",
+        child->GetName().c_str(),
+        name.c_str(),
+        children.size());
 }
 
 void GameObject::RemoveChild(std::shared_ptr<GameObject> child) {
@@ -118,7 +116,17 @@ void GameObject::RemoveChild(std::shared_ptr<GameObject> child) {
 
     auto it = std::find(children.begin(), children.end(), child);
     if (it != children.end()) {
+        /*(*it)->parent.reset();
+        children.erase(it, children.end());*/
+        (*it)->parent.reset();   
         children.erase(it);
-        child->parent.reset();
     }
+}
+
+const std::vector<std::shared_ptr<GameObject>>& GameObject::GetChildren() const {
+    return children;
+}
+
+std::shared_ptr<GameObject> GameObject::GetParent() const {
+    return parent.lock();
 }
