@@ -1,7 +1,6 @@
 #include "ResourceTexture.h"
-#include "TextureImporter.h"
+// #include "TextureImporter.h" // Necesitarás crear este archivo también
 #include "Log.h"
-#include <SDL3/SDL_opengl.h>
 
 ResourceTexture::ResourceTexture(uint32_t uid) : Resource(uid, ResourceType::TEXTURE) {
 }
@@ -13,12 +12,14 @@ ResourceTexture::~ResourceTexture() {
 void ResourceTexture::LoadInMemory() {
     if (loaded) return;
 
-    if (TextureImporter::Load(this)) {
-        loaded = true;
-    }
-    else {
-        LOG("Failed to load texture resource UID: %d", UID);
-    }
+    // Aquí llamarías a tu TextureImporter::Load(this);
+    // Por ahora, como placeholder si no tienes el importer hecho:
+    // textureID = TextureImporter::Load(this->libraryPath, &width, &height);
+
+    // EJEMPLO PSEUDOCÓDIGO:
+    // if (TextureImporter::Load(this)) loaded = true;
+
+    LOG("Loading Texture Resource (Logic pending TextureImporter implementation)");
 }
 
 void ResourceTexture::FreeMemory() {
@@ -32,7 +33,7 @@ void ResourceTexture::FreeMemory() {
 }
 
 void ResourceTexture::Bind(unsigned int unit) {
-    if (!loaded) LoadInMemory(); // Auto-load si es necesario
+    if (!loaded) return;
 
     glActiveTexture(GL_TEXTURE0 + unit);
     glBindTexture(GL_TEXTURE_2D, textureID);

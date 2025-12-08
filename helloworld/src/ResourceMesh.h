@@ -1,14 +1,6 @@
 #pragma once
 #include "Resource.h"
-#include <SDL3/SDL_opengl.h>
-#include <glm/glm.hpp>
-
-// Definimos la estructura Vertex
-struct Vertex {
-    glm::vec3 Position;
-    glm::vec3 Normal;
-    glm::vec2 TexCoords;
-};
+#include <SDL3/SDL_opengl.h> 
 
 class ResourceMesh : public Resource {
 public:
@@ -19,13 +11,17 @@ public:
     unsigned int VAO = 0;
     unsigned int VBO = 0;
     unsigned int EBO = 0;
-
-    // Contadores
     unsigned int indexCount = 0;
-    unsigned int vertexCount = 0;
 
-    // Métodos (Solo declaraciones)
+    // Metadatos útiles (Bounding Box)
+    // AABB aabb; 
+
+    // Carga usando ModelImporter
     void LoadInMemory() override;
+
+    // Limpia buffers de la GPU
     void FreeMemory() override;
+
+    // Helper para dibujar (solo la llamada de dibujo, sin shaders ni transforms)
     void BindAndDraw();
 };

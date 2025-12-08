@@ -11,10 +11,8 @@
 #include "TransformComponent.h"
 #include "RenderMeshComponent.h"
 #include "MaterialComponent.h"
-#include "ResourceTexture.h" // Usamos el nuevo recurso
-#include "ResourceMesh.h"    // Usamos el nuevo recurso
+#include "ResourceTexture.h"
 #include "Render.h"
-#include "ResMan.h"          // Necesario si queremos usar recursos
 
 #include <SDL3/SDL_opengl.h>
 #include <glm/glm.hpp>
@@ -25,14 +23,13 @@
 #include <glm/gtx/transform.hpp>
 
 #include <vector>
-#include <filesystem> // Necesario para el panel de Assets
 
 GUIElement::GUIElement(ElementType t, GUIManager* m)
 {
 	type = t;
 	manager = m;
-	// Inicializamos la ruta de assets
-	currentPath = "Assets";
+
+
 }
 
 GUIElement:: ~GUIElement()
@@ -61,9 +58,6 @@ void GUIElement::ElementSetUp()
 		break;
 	case ElementType::Inspector:
 		if (Application::GetInstance().guiManager.get()->showInspector) InspectorSetUp(&Application::GetInstance().guiManager.get()->showInspector);
-		break;
-	case ElementType::Assets: // NUEVO CASO
-		if (Application::GetInstance().guiManager.get()->showAssets) AssetsSetUp(&Application::GetInstance().guiManager.get()->showAssets);
 		break;
 	default:
 		LOG("No GUIType detected.");
@@ -100,11 +94,6 @@ void GUIElement::MenuBarSetUp()
 			if (ImGui::MenuItem("Inspector", nullptr, Application::GetInstance().guiManager.get()->showInspector)) {
 				bool set = !Application::GetInstance().guiManager.get()->showInspector;
 				Application::GetInstance().guiManager.get()->showInspector = set;
-			}
-			// Toggle para Assets
-			if (ImGui::MenuItem("Assets", nullptr, Application::GetInstance().guiManager.get()->showAssets)) {
-				bool set = !Application::GetInstance().guiManager.get()->showAssets;
-				Application::GetInstance().guiManager.get()->showAssets = set;
 			}
 
 			ImGui::EndMenu();
@@ -245,7 +234,7 @@ void GUIElement::ConfigSetUp(bool* show) {
 	//window resolution
 	if (!fullscreen) {
 		//get resolutions and current resolution from window
-		std::vector<glm::vec2> options = Application::GetInstance().window.get()->resolutions;
+		vector<glm::vec2> options = Application::GetInstance().window.get()->resolutions;
 		glm::vec2 current = Application::GetInstance().window.get()->currentRes;
 
 		//find index of current resolution
@@ -318,7 +307,7 @@ void GUIElement::HierarchySetUp(bool* show)
 		if (ImGui::MenuItem("Empty")) {
 			//Create empty 
 			auto empty = new Model();
-			// Application::GetInstance().render->AddModel(empty); // Render ya no gestiona Models directamente así en algunos casos, revisar
+			Application::GetInstance().render->AddModel(empty);
 
 			//add empty model to lists
 			Application::GetInstance().openGL.get()->modelObjects.push_back(empty);
@@ -359,9 +348,9 @@ void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_pt
 	bool opened = ImGui::TreeNodeEx((void*)obj.get(), flags, "%s", obj->GetName().c_str());
 
 	//check if object has been selected
-	if (ImGui::IsItemClicked()) {
+	if (ImGui::IsItemClicked()) { 
 		if (selected != nullptr) selected->isSelected = false;
-		selected = obj;
+		selected = obj; 
 	}
 
 	if (selected != nullptr) {
@@ -383,52 +372,6 @@ void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_pt
 		for (auto& child : obj->GetChildren()) DrawNode(child, selected);
 		ImGui::TreePop();
 	}
-}
-
-// NUEVA FUNCIÓN: Panel de Assets
-void GUIElement::AssetsSetUp(bool* show)
-{
-	if (!ImGui::Begin("Assets", show))
-	{
-		ImGui::End();
-		return;
-	}
-
-	// Navegación hacia atrás
-	if (currentPath != std::filesystem::path("Assets"))
-	{
-		if (ImGui::Button(".."))
-		{
-			currentPath = currentPath.parent_path();
-		}
-		ImGui::Separator();
-	}
-
-	// Listar archivos
-	if (std::filesystem::exists(currentPath)) {
-		for (const auto& entry : std::filesystem::directory_iterator(currentPath))
-		{
-			const auto& path = entry.path();
-			std::string filename = path.filename().string();
-
-			if (entry.is_directory())
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Amarillo para carpetas
-				if (ImGui::Selectable(filename.c_str()))
-				{
-					currentPath = path;
-				}
-				ImGui::PopStyleColor();
-			}
-			else
-			{
-				ImGui::Selectable(filename.c_str());
-				// TODO: Implement Drag & Drop Source here
-			}
-		}
-	}
-
-	ImGui::End();
 }
 
 void GUIElement::InspectorSetUp(bool* show)
@@ -453,81 +396,97 @@ void GUIElement::InspectorSetUp(bool* show)
 	if (selected) {
 		//show game object name
 		char buffer[128];
-		strncpy(buffer, selected->GetName().c_str(), sizeof(buffer));
-		buffer[sizeof(buffer) - 1] = '\0'; // Asegurar null termination
-
-		if (ImGui::InputText("Name", buffer, sizeof(buffer))) selected->SetName(buffer);
+		strcpy(buffer, selected->GetName().c_str());
+		if (ImGui::InputText("##hidden", buffer, sizeof(buffer))) selected->SetName(buffer);
 
 		//transform
 		//get transform component
 		auto transform = std::dynamic_pointer_cast<TransformComponent>(selected->GetComponent(ComponentType::TRANSFORM));
 		if (transform) {
-			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-				glm::vec3 pos = transform->GetWorldPosition();
-				glm::vec3 rot = glm::degrees(glm::eulerAngles(transform->GetWorldRotation()));
-				glm::vec3 scale = transform->GetWorldScale();
+			//check if header is open
+			if (ImGui::CollapsingHeader("Transform")) {
+				//get values
+				glm::vec3 pos = transform.get()->GetWorldPosition();
+				glm::quat rot = glm::degrees(glm::eulerAngles(transform->GetWorldRotation()));
+				glm::vec3 scale = transform.get()->GetWorldScale();
 
-				// Nota: Editar directamente la transformación global es complejo por la jerarquía.
-				// Aquí solo mostramos valores informativos.
-				ImGui::Text("Global Position: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
-
-				// Para editar, deberías exponer el LocalTransform en TransformComponent.
-				// ImGui::DragFloat3("Position", &localPos.x, 0.1f); etc.
+				//display values
+				ImGui::Text("Position: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
+				ImGui::Text("Rotation: %.2f, %.2f, %.2f", rot.x, rot.y, rot.z);
+				ImGui::Text("Scale: %.2f, %.2f, %.2f", scale.x, scale.y, scale.z);
 			}
 		}
 
-		// --- MESH ---
+		//mesh
+		//get mesh component
 		auto meshComponent = std::dynamic_pointer_cast<RenderMeshComponent>(selected->GetComponent(ComponentType::MESH_RENDERER));
+		//get texture for next step
+		vector<Texture> textureComponent;
+
+		bool showFaceNormals = manager->drawFaceNormals;
+		bool showVertNormals = manager->drawVertNormals;
+
 
 		if (meshComponent) {
-			// Usamos ResourceMesh ahora
-			std::shared_ptr<ResourceMesh> mesh = meshComponent->GetMesh();
+			std::shared_ptr<Mesh> mesh = meshComponent.get()->GetMesh();
+			if (mesh) textureComponent = mesh.get()->textures;
 
-			if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen)) {
-				if (mesh && mesh->IsLoaded()) {
-					// Mostramos información disponible en ResourceMesh
-					ImGui::Text("Resource UID: %u", mesh->GetUID());
-					ImGui::Text("Vertices: %d", mesh->vertexCount);
-					ImGui::Text("Indices: %d", mesh->indexCount);
-					ImGui::Text("VAO ID: %d", mesh->VAO);
+			//check if header is open
+			if (ImGui::CollapsingHeader("Mesh")) {
+				//get values
+				std::shared_ptr<Mesh> mesh = meshComponent.get()->GetMesh();
+				vector<Vertex> vert = mesh.get()->vertices;
+				vector<unsigned int> ind = mesh.get()->indices;
 
-					ImGui::Separator();
-					ImGui::TextDisabled("Normals visualization unavailable (Optimized VRAM)");
-				}
-				else {
-					ImGui::TextColored(ImVec4(1, 0, 0, 1), "No Mesh Loaded");
-				}
+				//display values
+				ImGui::Text("Vertices: %d", vert.size());
+				ImGui::Text("Indices: %d", ind.size());
+
+				//show normals 
+				ImGui::Checkbox("Show Vertex Normals", &mesh.get()->drawFaceNormals);
+				ImGui::Checkbox("Show Face Normals", &mesh.get()->drawVertNormals);
 			}
 
-			// --- TEXTURE ---
-			auto materialComp = std::dynamic_pointer_cast<MaterialComponent>(selected->GetComponent(ComponentType::MATERIAL));
+			//texture
+			if (ImGui::CollapsingHeader("Texture")) {
+				// Show current texture info
+				auto materialComp = std::dynamic_pointer_cast<MaterialComponent>(
+					selected->GetComponent(ComponentType::MATERIAL)
+				);
 
-			if (materialComp && ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen)) {
-
-				auto currentTex = materialComp->GetDiffuseMap();
-
-				if (currentTex && currentTex->IsLoaded()) {
-					ImGui::Text("Diffuse Texture:");
-					ImGui::Image((ImTextureID)(intptr_t)currentTex->textureID, ImVec2(100, 100));
-
-					ImGui::Text("Texture ID: %u", currentTex->textureID);
-					ImGui::BulletText("Size: %dx%d", currentTex->width, currentTex->height);
-					ImGui::BulletText("Path: %s", currentTex->assetsPath.c_str());
-				}
-				else {
-					ImGui::Text("No Diffuse Texture assigned.");
+				if (materialComp && materialComp->GetDiffuseMap()) {
+					auto currentTex = materialComp->GetDiffuseMap();
+					ImGui::Text("Current Texture ID: %u", currentTex->id);
+					ImGui::BulletText("Path: %s", currentTex->path.c_str());
+					ImGui::BulletText("Width: %d", currentTex->texW);
+					ImGui::BulletText("Height: %d", currentTex->texH);
 				}
 
-				// Checker Texture Logic (Desactivada temporalmente por refactor de módulo Textures)
-				/*
+				// Checker texture toggle
 				auto parentModel = manager->FindGameObjectModel(selected);
-				if (parentModel) {
-					if (ImGui::Checkbox("Use Default Texture", &parentModel->useDefaultTexture)) {
-						// Logic needs to be updated to use ResourceManager::Load("checkers.png")
-						// instead of Application::GetInstance().textures
+				if (parentModel && materialComp) {
+					if (ImGui::Checkbox("Show Checker Texture", &parentModel->useDefaultTexture)) {
+						if (parentModel->useDefaultTexture) {
+							// SWITCHING TO CHECKER
+							// Save current texture
+							parentModel->savedTexture = materialComp->GetDiffuseMap();
+
+							// Load checker
+							string fullPath = Application::GetInstance().textures.get()->defaultTexDir;
+							string fileName = fullPath.substr(fullPath.find_last_of('/') + 1);
+							auto checkerTex = std::make_shared<Texture>();
+							checkerTex->TextureFromFile(fullPath, fileName.c_str());
+
+							materialComp->SetDiffuseMap(checkerTex);
+						}
+						else {
+							// SWITCHING BACK TO ORIGINAL
+							if (parentModel->savedTexture) {
+								materialComp->SetDiffuseMap(parentModel->savedTexture);
+							}
+						}
 					}
 				}
-				*/
 			}
 		}
 	}

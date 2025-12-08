@@ -8,14 +8,13 @@
 
 #include "Module.h"
 #include "FileSystem.h"
+//#include "GameObject.h"
 #include <memory>
-#include <filesystem> // Necesario para std::filesystem::path
 
 class GameObject; // Forward declaration
 class GUIManager;
 
-// Añadido 'Assets' al final del Enum
-enum ElementType { Additional, MenuBar, Console, Config, Hierarchy, Inspector, Assets };
+enum ElementType{ Additional, MenuBar, Console, Config, Hierarchy, Inspector};
 
 class GUIElement {
 public:
@@ -32,17 +31,11 @@ public:
 	void HierarchySetUp(bool* show);
 	void InspectorSetUp(bool* show);
 
-	// Nueva función para el panel de Assets
-	void AssetsSetUp(bool* show);
-
 	//other
 	void DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_ptr<GameObject>& selected);
-
+	
 
 private:
 	ElementType type;
 	GUIManager* manager;
-
-	// Variable para guardar la ruta actual del explorador de archivos
-	std::filesystem::path currentPath;
 };
