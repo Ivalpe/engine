@@ -11,6 +11,7 @@
 #include "TransformComponent.h"
 #include "RenderMeshComponent.h"
 #include "MaterialComponent.h"
+#include "CameraComponent.h"
 #include "Textures.h"
 #include "Render.h"
 
@@ -118,6 +119,56 @@ void GUIElement::MenuBarSetUp()
 				Application::GetInstance().guiManager.get()->showAboutPopup = true;
 			}
 			ImGui::EndMenu();
+		}
+
+		ImGui::SameLine(0, 50);
+
+		auto openGL = Application::GetInstance().openGL.get(); // Shortcut
+
+		if (openGL->useGameCamera)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Rojo
+			if (ImGui::Button("STOP GAME"))
+			{
+				openGL->useGameCamera = false;
+				openGL->gameCamera = nullptr;
+			}
+			ImGui::PopStyleColor();
+		}
+		else
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f)); // Verde
+			if (ImGui::Button("PLAY GAME"))
+			{
+				// Buscar la primera cámara activa en la escena
+				std::shared_ptr<CameraComponent> foundCam = nullptr;
+
+				for (auto& obj : Application::GetInstance().guiManager->sceneObjects)
+				{
+					// Asegúrate de que obj no es nulo
+					if (!obj) continue;
+
+					// IMPORTANTE: Aquí asumo que ya añadiste CAMERA al enum en Component.h
+					auto component = obj->GetComponent(ComponentType::CAMERA);
+					if (component)
+					{
+						foundCam = std::dynamic_pointer_cast<CameraComponent>(component);
+						if (foundCam) break; // Encontramos una, paramos de buscar
+					}
+				}
+
+				if (foundCam)
+				{
+					openGL->gameCamera = foundCam.get();
+					openGL->useGameCamera = true;
+					LOG("Switching to Game Camera.");
+				}
+				else
+				{
+					LOG("ERROR: No GameObject with CameraComponent found!");
+				}
+			}
+			ImGui::PopStyleColor();
 		}
 
 		ImGui::EndMenuBar();

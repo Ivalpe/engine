@@ -10,6 +10,9 @@
 #include "Input.h"
 #include "Camera.h"
 #include "GUIManager.h"
+#include "CameraComponent.h"
+#include "TransformComponent.h"
+#include "GameObject.h"
 
 OpenGL::OpenGL() : Module()
 {
@@ -101,6 +104,32 @@ bool OpenGL::Start() {
 	Application::GetInstance().guiManager.get()->AddGameObject(ourModel);
 	Application::GetInstance().render.get()->AddModel(ourModel);
 
+	Model* cameraModel = new Model();
+	modelObjects.push_back(cameraModel);
+	Application::GetInstance().render.get()->AddModel(cameraModel);
+
+	// Obtenemos el GameObject raíz
+	std::shared_ptr<GameObject> camGO = cameraModel->GetRootGameObject();
+	camGO->SetName("Main Camera"); // Le ponemos nombre para encontrarla fácil
+
+	// IMPORTANTE: Añadimos a la lista de objetos de la escena del GUI
+	Application::GetInstance().guiManager.get()->sceneObjects.push_back(camGO);
+
+	// Añadimos el componente de cámara
+	camGO->AddComponent(ComponentType::CAMERA);
+
+	// Configuramos su posición inicial (Transform)
+	// Si no lo movemos, estará dentro del edificio (0,0,0)
+	auto transform = std::dynamic_pointer_cast<TransformComponent>(camGO->GetComponent(ComponentType::TRANSFORM));
+	if (transform)
+	{
+		// La colocamos un poco elevada y hacia atrás (Z positivo)
+		transform->SetPosition(glm::vec3(0.0f, 3.0f, 10.0f));
+
+		// Opcional: Rotarla un poco para que mire hacia abajo (Pitch negativo)
+		// transform->SetRotation(glm::vec3(-15.0f, 0.0f, 0.0f));
+	}
+
 	viewMat = glm::mat4(1.0f);
 
 
@@ -118,8 +147,6 @@ bool OpenGL::Update(float dt) {
 
 	glDisable(GL_CULL_FACE); //if defined clockwise, will not render
 
-
-
 	//grid
 
 	glUseProgram(texCoordsShader->ID);
@@ -133,8 +160,24 @@ bool OpenGL::Update(float dt) {
 	// Restore to normal texture mode
 	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), false);
 
-	viewMat = Application::GetInstance().camera->viewMat;
-	projectionMat = Application::GetInstance().camera->projectionMat;
+	if (useGameCamera) {
+		if (!gameCamera || !gameCamera->GetOwner() || gameCamera->GetOwner()->IsMarkedForDestroy()) {
+			useGameCamera = false;
+			gameCamera = nullptr;
+			LOG("Game Camera lost. Switching back to Editor Camera.");
+		}
+	}
+
+	if (useGameCamera && gameCamera != nullptr) //Playing mode
+	{
+		viewMat = gameCamera->GetViewMatrix();
+		projectionMat = gameCamera->GetProjectionMatrix();
+	}
+	else //Editor mode
+	{
+		viewMat = Application::GetInstance().camera->viewMat;
+		projectionMat = Application::GetInstance().camera->projectionMat;
+	}
 
 	texCoordsShader->Use();
 	texCoordsShader->setMat4("model", modelMat);

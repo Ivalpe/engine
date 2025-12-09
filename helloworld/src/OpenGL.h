@@ -3,6 +3,7 @@
 #include "Shader.h"
 
 #include "Model.h"
+#include "CameraComponent.h"
 
 class OpenGL : public Module {
 
@@ -24,6 +25,8 @@ public:
 	Shader* texCoordsShader;
 	Model* ourModel;
 	vector<Model*> modelObjects;
+	bool useGameCamera = false;
+	CameraComponent* gameCamera = nullptr;
 
 
 	bool Start() override;

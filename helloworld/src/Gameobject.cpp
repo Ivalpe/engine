@@ -4,6 +4,7 @@
 #include "MaterialComponent.h"
 #include <algorithm>
 #include "Log.h"
+#include "CameraComponent.h"
 
 GameObject::GameObject(const std::string& name_)
     : name(name_), active(true) {
@@ -42,6 +43,11 @@ std::shared_ptr<Component> GameObject::AddComponent(ComponentType type) {
         newComponent = std::make_shared<MaterialComponent>(shared_from_this());
         LOG("Added MATERIAL component to GameObject '%s'", name.c_str());
         break;
+    case ComponentType::CAMERA:
+        newComponent = std::make_shared<CameraComponent>(shared_from_this());
+        LOG("Added CAMERA component to GameObject '%s'", name.c_str());
+        break;
+        //
     default:
         LOG("WARNING: Attempted to add unknown component type to '%s'", name.c_str());
         return nullptr;
