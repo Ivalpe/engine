@@ -153,7 +153,7 @@ void Model::Draw(Shader& shader) {
         auto transform = std::dynamic_pointer_cast<TransformComponent>(transformComp);
         if (!transform) continue;
 
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        glm::mat4 modelMatrix = transform->GetGlobalTransform();
         
         //trigger checkerboard texture
         if (useDefaultTexture) {

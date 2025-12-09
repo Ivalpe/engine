@@ -127,8 +127,8 @@ void GUIElement::MenuBarSetUp()
 
 		if (openGL->useGameCamera)
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Rojo
-			if (ImGui::Button("STOP GAME"))
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+			if (ImGui::Button("STOP"))
 			{
 				openGL->useGameCamera = false;
 				openGL->gameCamera = nullptr;
@@ -137,23 +137,20 @@ void GUIElement::MenuBarSetUp()
 		}
 		else
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f)); // Verde
-			if (ImGui::Button("PLAY GAME"))
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+			if (ImGui::Button("PLAY"))
 			{
-				// Buscar la primera cámara activa en la escena
 				std::shared_ptr<CameraComponent> foundCam = nullptr;
-
 				for (auto& obj : Application::GetInstance().guiManager->sceneObjects)
 				{
-					// Asegúrate de que obj no es nulo
+					
 					if (!obj) continue;
 
-					// IMPORTANTE: Aquí asumo que ya añadiste CAMERA al enum en Component.h
 					auto component = obj->GetComponent(ComponentType::CAMERA);
 					if (component)
 					{
 						foundCam = std::dynamic_pointer_cast<CameraComponent>(component);
-						if (foundCam) break; // Encontramos una, paramos de buscar
+						if (foundCam) break;
 					}
 				}
 
@@ -183,9 +180,8 @@ void GUIElement::AboutSetUp() {
 		ImGui::Separator();
 		ImGui::Text("Developed by:");
 		ImGui::BulletText("Ivan Alvarez");
-		ImGui::BulletText("Kai Caire");
-		ImGui::BulletText("Lara Guevara");
 		ImGui::BulletText("Bernat Loza");
+		ImGui::BulletText("Maria Besora");
 		ImGui::Separator();
 		ImGui::Text("Developed using:");
 		ImGui::BulletText("vcpkg");
@@ -399,9 +395,9 @@ void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_pt
 	bool opened = ImGui::TreeNodeEx((void*)obj.get(), flags, "%s", obj->GetName().c_str());
 
 	//check if object has been selected
-	if (ImGui::IsItemClicked()) { 
+	if (ImGui::IsItemClicked()) {
 		if (selected != nullptr) selected->isSelected = false;
-		selected = obj; 
+		selected = obj;
 	}
 
 	if (selected != nullptr) {
@@ -454,17 +450,20 @@ void GUIElement::InspectorSetUp(bool* show)
 		//get transform component
 		auto transform = std::dynamic_pointer_cast<TransformComponent>(selected->GetComponent(ComponentType::TRANSFORM));
 		if (transform) {
-			//check if header is open
 			if (ImGui::CollapsingHeader("Transform")) {
-				//get values
-				glm::vec3 pos = transform.get()->GetWorldPosition();
-				glm::quat rot = glm::degrees(glm::eulerAngles(transform->GetWorldRotation()));
-				glm::vec3 scale = transform.get()->GetWorldScale();
+				glm::vec3 pos = transform->GetPosition();
+				glm::vec3 rot = transform->GetEulerAngles();
+				glm::vec3 scale = transform->GetScale();
 
-				//display values
-				ImGui::Text("Position: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
-				ImGui::Text("Rotation: %.2f, %.2f, %.2f", rot.x, rot.y, rot.z);
-				ImGui::Text("Scale: %.2f, %.2f, %.2f", scale.x, scale.y, scale.z);
+				if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
+					transform->SetPosition(pos);
+
+				if (ImGui::DragFloat3("Rotation", &rot.x, 0.1f))
+					transform->SetRotation(rot);
+
+				if (ImGui::DragFloat3("Scale", &scale.x, 0.1f))
+					transform->SetScale(scale);
+
 			}
 		}
 

@@ -17,16 +17,20 @@ Camera::Camera() : Module()
 	cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 	cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 	targetPos = glm::vec3(0.0f, 0.0f, 0.0f);
-	yaw = -90.0f; // Mirando hacia -Z (lo estándar en OpenGL)
+	yaw = -90.0f;
 	pitch = 0.0f;
 	fov = 45.0f;
-	distance = glm::length(cameraPos - targetPos); // Distancia inicial (3.0f)
+	distance = glm::length(cameraPos - targetPos);
 
 	firstMouse = true;
 	lastX = 0.0f;
 	lastY = 0.0f;
 	xpos = 0.0f;
 	ypos = 0.0f;
+
+	fov = 45.0f;
+	nearPlane = 0.1f;
+	farPlane = 5000.0f;
 }
 
 Camera::~Camera()
@@ -277,7 +281,7 @@ void Camera::FocusObject(bool firstTime) {
 
 void Camera::RecalculateMatrices(int windowW, int windowH)
 {
-	float aspectRatio = (float)Application::GetInstance().window.get()->width / (float)Application::GetInstance().window.get()->height;
-	projectionMat = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 100.0f);
+	float aspectRatio = (float)windowW / (float)windowH;
+	projectionMat = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
 	viewMat = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
