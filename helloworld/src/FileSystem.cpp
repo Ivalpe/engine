@@ -17,7 +17,7 @@ bool FileSystem::Awake() {
 
     // Asegurarnos de que las carpetas base existan
     if (!Exists("Assets")) CreateDir("Assets");
-    if (!Exists("Library")) CreateDir("Library");
+    if (!Exists("Assets/Library")) CreateDir("Assets/Library");
 
     return true;
 }
