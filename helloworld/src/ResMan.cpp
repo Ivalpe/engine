@@ -2,6 +2,7 @@
 #include <typeinfo>
 #include <iostream>
 #include <filesystem>
+#include "Application.h"
 #include <fstream>
 #include <string>
 #include "ResMan.h"
@@ -70,6 +71,93 @@ void ResourceManager::CleanUp() {
 ResourceManager::~ResourceManager() {
     CleanUp();
     std::cout << "GESTIÓN DE RECURSOS: Gestor destruido." << std::endl;
+}
+
+// ---------------------------------------------------------------------
+// IMPORTACIÓN DE ASSETS Y GESTIÓN DE META-DATA
+// ---------------------------------------------------------------------
+
+void ResourceManager::ImportAssets() {
+    LOG("Resource Manager: Importando Assets...");
+
+    // 1. Acceder al FileSystem
+    auto fs = Application::GetInstance().fileSystem;
+
+    // 2. Obtener todos los archivos de Assets (recursivamente)
+    std::vector<std::string> files = fs->GetAllFiles("Assets", true);
+
+    for (const std::string& path : files) {
+        // Ignoramos los propios archivos .meta para no entrar en bucle infinito
+        if (path.find(".meta") != std::string::npos) continue;
+
+        // 3. Obtener el UUID (leyendo el .meta o creando uno nuevo)
+        VroomUUID uid = GetOrCreateMeta(path);
+
+        // 4. Verificar si el archivo ya existe en la Library
+        // En la Library, el archivo se llamará simplemente como el número UUID
+        std::string libraryPath = "Assets/Library/" + std::to_string(uid);
+
+        bool libraryExists = fs->Exists(libraryPath);
+
+        // Si no existe en Library, lo "importamos" (por ahora copiamos)
+        if (!libraryExists) {
+            std::cout << "[Import] Generando recurso en Library: " << path << " -> " << uid << std::endl;
+            SaveToLibrary(path, uid);
+        }
+    }
+}
+
+VroomUUID ResourceManager::GetOrCreateMeta(const std::string& path) {
+    std::string metaPath = path + ".meta";
+    auto fs = Application::GetInstance().fileSystem;
+
+    // A) CASO 1: El .meta YA EXISTE. Lo leemos.
+    if (fs->Exists(metaPath)) {
+        std::ifstream file(metaPath);
+        std::string line;
+        VroomUUID uid = 0;
+        if (file.is_open()) {
+            while (std::getline(file, line)) {
+                if (line.find("UID: ") != std::string::npos) {
+                    // Extraemos el número después de "UID: "
+                    try {
+                        // std::stoull convierte string a unsigned long long (nuestro UUID)
+                        uid = std::stoull(line.substr(5));
+                    }
+                    catch (...) {
+                        uid = 0;
+                    }
+                    break;
+                }
+            }
+            file.close();
+            // Si leímos un ID válido, lo devolvemos
+            if (uid != 0) return uid;
+        }
+    }
+
+    // B) CASO 2: El .meta NO EXISTE. Creamos uno nuevo.
+    VroomUUID newUID = UUIDGen::GenerateUUID(); // <--- Usamos tu clase aquí
+
+    std::ofstream file(metaPath);
+    if (file.is_open()) {
+        file << "UID: " << newUID << "\n";
+        // Guardamos fecha de modificación para futuras comprobaciones
+        file << "Time: " << fs->GetLastModTime(path) << "\n";
+        file.close();
+        // LOG("Meta generado para: %s", path.c_str());
+    }
+
+    return newUID;
+}
+
+void ResourceManager::SaveToLibrary(const std::string& assetPath, VroomUUID uid) {
+    // Definimos la ruta destino: Assets/Library/NUMERO_UUID
+    std::string libPath = "Assets/Library/" + std::to_string(uid);
+
+    // Por ahora hacemos una copia directa.
+    // TAREA FUTURA: Aquí es donde convertirías el .fbx a tu formato binario propio.
+    Application::GetInstance().fileSystem->Copy(assetPath, libPath);
 }
 
 

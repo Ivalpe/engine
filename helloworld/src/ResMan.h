@@ -7,6 +7,7 @@
 #include <string>
 #include <memory>         
 #include <unordered_map>  
+#include "UUID.h"
 
               
         class Resource;
@@ -27,6 +28,9 @@
            
             void CleanUp();
 
+            void ImportAssets(); 
+            VroomUUID GetOrCreateMeta(const std::string& assetPath);
+
         private:
            
             ResourceManager() = default;
@@ -39,6 +43,8 @@
 
             // Opcional: Método interno para cargar el recurso (esto es del gm)
             std::shared_ptr<Resource> InternalLoad(const std::string& path, const std::string& typeName);
+
+            void SaveToLibrary(const std::string& assetPath, VroomUUID uid);
         };
 
     
