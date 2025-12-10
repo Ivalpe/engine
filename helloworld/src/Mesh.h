@@ -12,6 +12,7 @@
 #include "assimp/postprocess.h"
 #include "assimp/mesh.h"
 #include <limits>
+#include "Resource.h"
 
 
 using namespace std;
@@ -31,7 +32,7 @@ struct AABB {
 class Texture;
  
 
-class Mesh {
+class Mesh : public Resource { 
 public:
     // mesh data
     vector<Vertex>       vertices;
@@ -42,7 +43,13 @@ public:
     
     AABB meshAABB;
 
-    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
+    Mesh() : Resource(ResourceType::MESH, "EmptyMesh") {}
+    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
+        : Resource(ResourceType::MESH, "Mesh"), // <--- LLAMA AL PADRE
+        vertices(vertices), indices(indices), textures(textures)
+    {
+        setupMesh();
+    }
     ~Mesh();
     void CalculateNormals();
     void CalculateAABB();

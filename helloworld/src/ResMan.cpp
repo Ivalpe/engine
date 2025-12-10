@@ -6,7 +6,7 @@
 #include <fstream>
 #include <string>
 #include "ResMan.h"
-#include "FileSystem.cpp"
+#include "FileSystem.h"
 
 //hacer save system propio  aqui 
 
@@ -78,7 +78,7 @@ ResourceManager::~ResourceManager() {
 // ---------------------------------------------------------------------
 
 void ResourceManager::ImportAssets() {
-    LOG("Resource Manager: Importando Assets...");
+    
 
     // 1. Acceder al FileSystem
     auto fs = Application::GetInstance().fileSystem;
