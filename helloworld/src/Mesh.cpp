@@ -245,18 +245,13 @@ void Mesh::CalculateNormals() {
 }
 
 void Mesh::Load() {
-    // La ruta 'fileName' o 'libraryPath' debería venir seteada desde el ResourceManager
-    // Usaremos 'fileName' asumiendo que el ResourceManager le puso la ruta de Library ahí.
-    // Si usas una variable distinta en Resource, cámbiala aquí.
-
-    // NOTA: Resource.h tiene 'libraryPath'. Asegúrate de que ResMan setea eso antes de llamar a Load.
-    // Si ResMan usa SetPath(path), usa esa variable.
-    std::string path = this->GetLibraryPath(); // O this->GetName() si ahí guardas la ruta completa
-    if (path.empty()) path = this->GetName(); // Fallback
+    // Usamos la ruta de Library que ResMan nos ha asignado
+    std::string path = this->GetLibraryPath();
+    if (path.empty()) return;
 
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open()) {
-        std::cout << "ERROR: No se pudo abrir el archivo de malla propio: " << path << std::endl;
+        std::cout << "ERROR: No se pudo abrir el binario: " << path << std::endl;
         return;
     }
 
@@ -269,22 +264,20 @@ void Mesh::Load() {
     vertices.resize(numVertices);
     indices.resize(numIndices);
 
-    // 2. Leer Vértices
+    // 2. Leer Datos
     for (uint32_t i = 0; i < numVertices; i++) {
         file.read((char*)&vertices[i].Position, sizeof(float) * 3);
         file.read((char*)&vertices[i].Normal, sizeof(float) * 3);
         file.read((char*)&vertices[i].texCoord, sizeof(float) * 2);
     }
-
-    // 3. Leer Índices
     file.read((char*)&indices[0], numIndices * sizeof(unsigned int));
 
     file.close();
 
-    // 4. Configurar OpenGL
+    // 3. Regenerar buffers de OpenGL
     setupMesh();
     CalculateNormals();
     CalculateAABB();
 
-    std::cout << "Mesh cargada desde binario propio! Vértices: " << numVertices << std::endl;
+    std::cout << "Mesh cargada desde binario propio (.vroom)! Vértices: " << numVertices << std::endl;
 }

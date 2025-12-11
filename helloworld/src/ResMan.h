@@ -44,8 +44,9 @@
             // Opcional: Método interno para cargar el recurso (esto es del gm)
             std::shared_ptr<Resource> InternalLoad(const std::string& path, const std::string& typeName);
 
-            void SaveToLibrary(const std::string& assetPath, VroomUUID uid);
+            
 
+            void SaveToLibrary(const std::string& assetPath, VroomUUID uid);
             void ImportMesh(const std::string& assetPath, const std::string& libraryPath);
             void ImportTexture(const std::string& assetPath, const std::string& libraryPath);
         };
