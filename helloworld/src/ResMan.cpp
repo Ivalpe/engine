@@ -7,6 +7,10 @@
 #include <string>
 #include "ResMan.h"
 #include "FileSystem.h"
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
+#include "stb_image.h"
 
 //hacer save system propio  aqui 
 
@@ -40,6 +44,11 @@ std::shared_ptr<Resource> ResourceManager::InternalLoad(const std::string& path,
     if (typeName.find("Mesh") != std::string::npos) {
         newResource = std::make_shared<Mesh>();
     }
+    // AQUÍ DEBES AÑADIR TEXTURAS SI QUIERES QUE FUNCIONE CON ELLAS TAMBIÉN
+    else if (typeName.find("Texture") != std::string::npos) {
+        // newResource = std::make_shared<Texture>(); 
+        // Asegúrate de tener el constructor adecuado en Texture
+    }
     else {
         std::cerr << "ERROR: Tipo de recurso no soportado: " << typeName << std::endl;
         return nullptr;
@@ -47,11 +56,31 @@ std::shared_ptr<Resource> ResourceManager::InternalLoad(const std::string& path,
 
     // 3. Cargar datos desde Library y añadir a la caché
     if (newResource) {
-        newResource->SetPath(path);
-        // La ruta 'path' debe apuntar al archivo optimizado en Library/
+        // A) Obtener o Generar el UUID del archivo original
+        VroomUUID uid = GetOrCreateMeta(path);
+
+        // B) Construir la ruta al archivo binario en Library
+        std::string libPath = "Assets/Library/" + std::to_string(uid);
+
+        // C) Asegurarnos de que el archivo binario existe
+        // Si no existe (porque acabas de meter el fbx), lo creamos ahora mismo.
+        bool libExists = Application::GetInstance().fileSystem->Exists(libPath);
+        if (!libExists) {
+            std::cout << "[InternalLoad] Generando binario en Library para: " << path << std::endl;
+            SaveToLibrary(path, uid);
+        }
+
+        // D) Configurar el recurso
+        newResource->SetUID(uid);
+        newResource->SetAssetsPath(path);    // Guardamos la ruta original (Assets/...)
+        newResource->SetLibraryPath(libPath); // Guardamos la ruta binaria (Library/...)
+
+        // E) Cargar (Ahora Mesh::Load usará 'GetLibraryPath' para leer el binario)
         newResource->Load();
+
+        // F) Guardar en el mapa de recursos
         m_resources[path] = newResource;
-        std::cout << "CACHE MISS: Recurso " << typeName << " CREADO y CARGADO en " << path << std::endl;
+        std::cout << "CACHE MISS: Recurso " << typeName << " CREADO y CARGADO desde Library (" << uid << ")" << std::endl;
     }
 
     return newResource;
@@ -152,13 +181,122 @@ VroomUUID ResourceManager::GetOrCreateMeta(const std::string& path) {
 }
 
 void ResourceManager::SaveToLibrary(const std::string& assetPath, VroomUUID uid) {
-    // Definimos la ruta destino: Assets/Library/NUMERO_UUID
+    // Ruta destino: Assets/Library/UUID
     std::string libPath = "Assets/Library/" + std::to_string(uid);
 
-    // Por ahora hacemos una copia directa.
-    // TAREA FUTURA: Aquí es donde convertirías el .fbx a tu formato binario propio.
-    Application::GetInstance().fileSystem->Copy(assetPath, libPath);
+    // Detectar extensión para saber cómo procesar
+    std::string extension = assetPath.substr(assetPath.find_last_of(".") + 1);
+
+    // Convertir a minúsculas por si acaso (FBX, fbx)
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+    if (extension == "png" || extension == "jpg" || extension == "jpeg" || extension == "tga") {
+        ImportTexture(assetPath, libPath);
+    }
+    else if (extension == "fbx" || extension == "obj") {
+        ImportMesh(assetPath, libPath);
+    }
+    else {
+        // Fallback: copia directa para archivos desconocidos
+        Application::GetInstance().fileSystem->Copy(assetPath, libPath);
+    }
 }
+
+void ResourceManager::ImportTexture(const std::string& assetPath, const std::string& libPath) {
+    int width, height, channels;
+    // Cargar píxeles crudos (sin comprimir)
+    unsigned char* data = stbi_load(assetPath.c_str(), &width, &height, &channels, 0);
+
+    if (data) {
+        std::ofstream file(libPath, std::ios::binary);
+        if (file.is_open()) {
+            // CABECERA: Guardamos ancho, alto y canales
+            file.write((char*)&width, sizeof(int));
+            file.write((char*)&height, sizeof(int));
+            file.write((char*)&channels, sizeof(int));
+
+            // DATOS: Guardamos el array de píxeles completo
+            // Tamaño = w * h * bytes_por_canal (char = 1 byte)
+            file.write((char*)data, width * height * channels);
+
+            file.close();
+            std::cout << "[Import] Textura guardada en Library: " << libPath << std::endl;
+        }
+        stbi_image_free(data);
+    }
+    else {
+        std::cerr << "[Error] No se pudo cargar textura para importar: " << assetPath << std::endl;
+    }
+}
+
+void ResourceManager::ImportMesh(const std::string& assetPath, const std::string& libPath) {
+    Assimp::Importer importer;
+    // Importante: Triangulate para asegurar triángulos, FlipUVs para texturas
+    const aiScene* scene = importer.ReadFile(assetPath, aiProcess_Triangulate | aiProcess_FlipUVs);
+
+    if (!scene || !scene->mRootNode || scene->mNumMeshes == 0) {
+        std::cerr << "[Error] Assimp no pudo cargar el mesh: " << assetPath << std::endl;
+        return;
+    }
+
+    // SIMPLIFICACIÓN: Por ahora guardamos solo la PRIMERA malla encontrada en el archivo.
+    // Un sistema más complejo iteraría sobre 'scene->mMeshes' y guardaría múltiples archivos o un archivo compuesto.
+    aiMesh* mesh = scene->mMeshes[0];
+
+    std::ofstream file(libPath, std::ios::binary);
+    if (file.is_open()) {
+
+        // 1. HEADER
+        uint32_t numVertices = mesh->mNumVertices;
+        uint32_t numIndices = 0;
+
+        // Calcular total de índices
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+            numIndices += mesh->mFaces[i].mNumIndices;
+        }
+
+        file.write((char*)&numVertices, sizeof(uint32_t));
+        file.write((char*)&numIndices, sizeof(uint32_t));
+
+        // 2. BODY - Vertices
+        // Tu struct Vertex tiene: vec3 Position, vec3 Normal, vec2 TexCoord
+        for (unsigned int i = 0; i < numVertices; i++) {
+            // Pos
+            float pos[3] = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
+            file.write((char*)pos, sizeof(float) * 3);
+
+            // Norm
+            float norm[3] = { 0,0,0 };
+            if (mesh->HasNormals()) {
+                norm[0] = mesh->mNormals[i].x;
+                norm[1] = mesh->mNormals[i].y;
+                norm[2] = mesh->mNormals[i].z;
+            }
+            file.write((char*)norm, sizeof(float) * 3);
+
+            // TexCoord
+            float tex[2] = { 0,0 };
+            if (mesh->HasTextureCoords(0)) {
+                tex[0] = mesh->mTextureCoords[0][i].x;
+                tex[1] = mesh->mTextureCoords[0][i].y;
+            }
+            file.write((char*)tex, sizeof(float) * 2);
+        }
+
+        // 3. BODY - Indices
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+            aiFace face = mesh->mFaces[i];
+            for (unsigned int j = 0; j < face.mNumIndices; j++) {
+                uint32_t idx = face.mIndices[j];
+                file.write((char*)&idx, sizeof(uint32_t));
+            }
+        }
+
+        file.close();
+        std::cout << "[Import] Mesh guardada en Library: " << libPath << std::endl;
+    }
+}
+
 
 
 //to do

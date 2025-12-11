@@ -30,9 +30,9 @@ struct AABB {
 };
 
 class Texture;
- 
 
-class Mesh : public Resource { 
+
+class Mesh : public Resource {
 public:
     // mesh data
     vector<Vertex>       vertices;
@@ -40,29 +40,29 @@ public:
     vector<Texture>      textures;
 
     vector<glm::vec3>    normals;
-    
+
     AABB meshAABB;
 
     Mesh() : Resource(ResourceType::MESH, "EmptyMesh") {}
-    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
-        : Resource(ResourceType::MESH, "Mesh"), // <--- LLAMA AL PADRE
-        vertices(vertices), indices(indices), textures(textures)
-    {
-        setupMesh();
-    }
+
+    // CORRECCIÓN: Solo la declaración, sin cuerpo ni lista de inicialización
+    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
+
+    void Load() override;
+
     ~Mesh();
     void CalculateNormals();
     void CalculateAABB();
     void DrawAABB(Shader& shader, const glm::mat4& modelMatrix, const glm::vec4& color);
-    void Draw(Shader &shader);
+    void Draw(Shader& shader);
     bool drawVertNormals = false;
     bool drawFaceNormals = false;
-    
+
 
 private:
     //  render data
     unsigned int VAO, VBO, EBO;
 
     void setupMesh();
-    
+
 };

@@ -4,16 +4,17 @@
 #include "Application.h"
 #include "GuiManager.h"
 #include "Render.h"
+#include "Resource.h"
+#include <fstream>
 
-
-Mesh::Mesh(vector<Vertex> _vertices, vector<unsigned int> _indices, vector<Texture> _textures) {
-
+// CORRECCIÓN: Se añade ": Resource(...)" para inicializar la clase base
+Mesh::Mesh(vector<Vertex> _vertices, vector<unsigned int> _indices, vector<Texture> _textures)
+    : Resource(ResourceType::MESH, "Mesh")
+{
     this->vertices = _vertices;
     this->indices = _indices;
     this->textures = _textures;
-    
 
-    
     drawVertNormals = false;
     drawFaceNormals = false;
 
@@ -53,7 +54,7 @@ void Mesh::setupMesh() {
 
 
 
-    
+
 }
 
 void Mesh::CalculateAABB() {
@@ -130,11 +131,11 @@ void Mesh::DrawAABB(Shader& shader, const glm::mat4& modelMatrix, const glm::vec
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void Mesh::Draw(Shader &shader) {
+void Mesh::Draw(Shader& shader) {
     unsigned int diffuseNr = 1;
     unsigned int specularNr = 1;
 
-    
+
 
     for (unsigned int i = 0; i < textures.size(); i++)
     {
@@ -149,24 +150,24 @@ void Mesh::Draw(Shader &shader) {
 
         shader.setInt(("material." + name + number).c_str(), i);
 
-        
-        glBindTexture(GL_TEXTURE_2D, textures[i].id);
-        
-    }
-    
 
-    
+        glBindTexture(GL_TEXTURE_2D, textures[i].id);
+
+    }
+
+
+
     if (drawFaceNormals) {
-        
-        
+
+
         glUniform1i(glGetUniformLocation(shader.ID, "useLineColor"), true);
         glUniform4f(glGetUniformLocation(shader.ID, "lineColor"), 0.0f, 1.0f, 0.0f, 1.0f); //green for vertex
 
-        
+
         glBegin(GL_LINES);
-        
-        
-        for (int i = 0; i < indices.size(); i+=3) {
+
+
+        for (int i = 0; i < indices.size(); i += 3) {
             glm::vec3 start = vertices[indices[i]].Position;
             glm::vec3 end = start + normals[indices[i]] * 0.2f;
             glVertex3fv(glm::value_ptr(start));
@@ -184,9 +185,9 @@ void Mesh::Draw(Shader &shader) {
         glUniform4f(glGetUniformLocation(shader.ID, "lineColor"), 0.0f, 0.9f, 1.0f, 1.0f); //blue for face
 
         glBegin(GL_LINES);
-        
 
-        for (int i = 0; i < vertices.size(); i+=3) {
+
+        for (int i = 0; i < vertices.size(); i += 3) {
             glm::vec3 v0 = vertices[indices[i]].Position;
             glm::vec3 v1 = vertices[indices[i + 1]].Position;
             glm::vec3 v2 = vertices[indices[i + 2]].Position;
@@ -203,7 +204,7 @@ void Mesh::Draw(Shader &shader) {
         glEnd();
         glUniform1i(glGetUniformLocation(shader.ID, "useLineColor"), false);
     }
-    
+
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
@@ -224,10 +225,10 @@ void Mesh::CalculateNormals() {
         //With just vertices[i] instead of vertices[indices[i]], you’d be assuming that every 3 consecutive vertices form a triangle.
         //However, that's not always the case, as most meshes reuse vertices between faces.
 
-        glm::vec3 normal = glm::normalize(glm::cross(v1-v0, v2-v0)); 
+        glm::vec3 normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
         //compute cross product with v0->v1, v0->v2 
         //both from the same point (v0), because the resulting perpendicular vector has to sit on a common vertex
-        
+
         //add normal vector on top of each vertex
         normals[indices[i]] += normal;
         normals[indices[i + 1]] += normal;
@@ -240,6 +241,50 @@ void Mesh::CalculateNormals() {
         //since we added the normals to the indices, they aren't normalized anymore, so we do it again
         normal = glm::normalize(normal);
     }
-    
+
 }
 
+void Mesh::Load() {
+    // La ruta 'fileName' o 'libraryPath' debería venir seteada desde el ResourceManager
+    // Usaremos 'fileName' asumiendo que el ResourceManager le puso la ruta de Library ahí.
+    // Si usas una variable distinta en Resource, cámbiala aquí.
+
+    // NOTA: Resource.h tiene 'libraryPath'. Asegúrate de que ResMan setea eso antes de llamar a Load.
+    // Si ResMan usa SetPath(path), usa esa variable.
+    std::string path = this->GetLibraryPath(); // O this->GetName() si ahí guardas la ruta completa
+    if (path.empty()) path = this->GetName(); // Fallback
+
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "ERROR: No se pudo abrir el archivo de malla propio: " << path << std::endl;
+        return;
+    }
+
+    // 1. Leer Header
+    uint32_t numVertices = 0;
+    uint32_t numIndices = 0;
+    file.read((char*)&numVertices, sizeof(uint32_t));
+    file.read((char*)&numIndices, sizeof(uint32_t));
+
+    vertices.resize(numVertices);
+    indices.resize(numIndices);
+
+    // 2. Leer Vértices
+    for (uint32_t i = 0; i < numVertices; i++) {
+        file.read((char*)&vertices[i].Position, sizeof(float) * 3);
+        file.read((char*)&vertices[i].Normal, sizeof(float) * 3);
+        file.read((char*)&vertices[i].texCoord, sizeof(float) * 2);
+    }
+
+    // 3. Leer Índices
+    file.read((char*)&indices[0], numIndices * sizeof(unsigned int));
+
+    file.close();
+
+    // 4. Configurar OpenGL
+    setupMesh();
+    CalculateNormals();
+    CalculateAABB();
+
+    std::cout << "Mesh cargada desde binario propio! Vértices: " << numVertices << std::endl;
+}

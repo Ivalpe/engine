@@ -33,7 +33,7 @@
 
         private:
            
-            ResourceManager() = default;
+            ResourceManager();
             ~ResourceManager();
             ResourceManager(const ResourceManager&) = delete;
             ResourceManager& operator=(const ResourceManager&) = delete;
@@ -45,6 +45,9 @@
             std::shared_ptr<Resource> InternalLoad(const std::string& path, const std::string& typeName);
 
             void SaveToLibrary(const std::string& assetPath, VroomUUID uid);
+
+            void ImportMesh(const std::string& assetPath, const std::string& libraryPath);
+            void ImportTexture(const std::string& assetPath, const std::string& libraryPath);
         };
 
     
