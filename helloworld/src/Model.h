@@ -21,7 +21,9 @@ public:
     
     std::shared_ptr<Texture> savedTexture;
     
-    void Draw(Shader& shader); 
+    std::string FindTextureByKeywords(const std::string& directory, const std::vector<std::string>& keywords);
+
+    void Draw(Shader& shader);
     std::vector<std::shared_ptr<Mesh>> meshes;
     std::shared_ptr<GameObject> rootGameObject;
     std::vector<std::shared_ptr<GameObject>> gameObjects;

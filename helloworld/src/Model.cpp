@@ -307,9 +307,6 @@ vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
         
         textures.push_back(GetOrLoadTexture(fullPath, str.C_Str(), typeName));
     }
-
-    
-
     return textures;
 }
 

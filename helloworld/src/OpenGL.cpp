@@ -96,7 +96,7 @@ bool OpenGL::Start() {
 	texCoordsShader->Use();
 
 
-	std::string modelPath = "../Assets/Models/BakerHouse/BakerHouse.fbx";
+	std::string modelPath = "../Assets/Models/Street/street2.fbx";
 	
 
 	ourModel = new Model(modelPath.c_str());
