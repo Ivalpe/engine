@@ -22,6 +22,7 @@ public:
     std::shared_ptr<Texture> savedTexture;
 
     void Draw(Shader& shader);
+    std::string normalizePath(const std::string& path);
     std::vector<std::shared_ptr<Mesh>> meshes;
     std::shared_ptr<GameObject> rootGameObject;
     std::vector<std::shared_ptr<GameObject>> gameObjects;
@@ -32,6 +33,8 @@ public:
     { 
         return rootGameObject; 
     }
+
+    Texture CreateSolidColorTexture(glm::vec4 color, const std::string& typeName);
     
     std::string fileName, fileExtension, directory;
     int processedMeshes = 0;
