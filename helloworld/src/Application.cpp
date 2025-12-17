@@ -8,6 +8,7 @@
 #include "OpenGL.h"
 #include "FileSystem.h"
 #include "Textures.h"
+#include "ResMan.h"
 
 #include "GUIManager.h"
 #include "RenderMeshComponent.h"
@@ -74,6 +75,7 @@ bool Application::Awake() {
             break;
         }
     }
+    ResourceManager::GetInstance().ImportAssets();
 
     return result;
 }

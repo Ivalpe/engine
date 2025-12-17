@@ -381,6 +381,53 @@ void GUIElement::HierarchySetUp(bool* show)
 	ImGui::End();
 }
 
+//assets menu (mirar si es mejor ponerlo abajo con el console como otra pestaña)
+
+void GUIElement::AssetSetUp(bool* show)
+{
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
+
+	//initial states
+	ImGui::SetNextWindowDockID(0, ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_FirstUseEver);
+
+	//check if we should show it
+	if (!ImGui::Begin("AssetMenu", show, window_flags))
+	{
+		//if not -> end here
+		ImGui::End();
+		return;
+	}
+
+	//create objects (minim cube)
+	if (ImGui::BeginMenu("Create...")) {
+		if (ImGui::MenuItem("Empty")) {
+			//Create empty 
+			auto empty = new Model();
+			Application::GetInstance().render->AddModel(empty);
+
+			//add empty model to lists
+			Application::GetInstance().openGL.get()->modelObjects.push_back(empty);
+			Application::GetInstance().guiManager.get()->sceneObjects.push_back(empty->GetRootGameObject());
+
+		}
+		//hacer que aqui se cargen las carpetas(cuando se hagan bien lol)
+		if (ImGui::MenuItem("Cube")) {
+			Model* defaultCube = Application::GetInstance().openGL->CreateCube();
+			Application::GetInstance().render->AddModel(defaultCube);
+		}
+		ImGui::EndMenu();
+	}
+
+	ImGui::Separator();
+
+	
+
+	ImGui::End();
+}
+
+
+
 void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_ptr<GameObject>& selected) {
 	//make sure obj is not set for deletion
 	if (!obj) return;

@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 
+add_compile_definitions(_HAS_STD_BYTE=0)
+
 project(VroomEngine)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
@@ -10,14 +16,52 @@ find_package(assimp CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
-
-
-add_executable(VroomEngine src/VroomEngine.cpp src/Application.cpp src/Application.h src/Module.h src/Window.cpp src/Window.h src/Render.cpp src/Render.h src/Input.cpp src/Input.h 
-src/OpenGL.h src/OpenGL.cpp src/Log.h src/Log.cpp src/FileSystem.h src/FileSystem.cpp src/Shader.h src/Shader.cpp src/Mesh.h src/Mesh.cpp src/Model.h src/Model.cpp src/Textures.h 
-src/Textures.cpp src/Component.h src/Component.cpp src/GameObject.h src/GameObject.cpp src/TransformComponent.h src/TransformComponent.cpp src/RenderMeshComponent.h src/RenderMeshComponent.cpp
-src/MaterialComponent.h src/MaterialComponent.cpp src/Camera.h src/Camera.cpp src/GUIManager.h src/GUIManager.cpp src/GUIElement.cpp src/GUIElement.h)
-
-
-
+add_executable(VroomEngine 
+    src/VroomEngine.cpp 
+    src/Application.cpp 
+    src/Application.h 
+    src/Module.h 
+    src/Window.cpp 
+    src/Window.h 
+    src/Render.cpp 
+    src/Render.h 
+    src/Input.cpp 
+    src/Input.h 
+    src/OpenGL.h 
+    src/OpenGL.cpp 
+    src/Log.h 
+    src/Log.cpp
+    src/FileSystem.h 
+    src/FileSystem.cpp 
+    src/Shader.h 
+    src/Shader.cpp 
+    src/Mesh.h 
+    src/Mesh.cpp 
+    src/Model.h 
+    src/Model.cpp 
+    src/Textures.h 
+    src/Textures.cpp 
+    src/Component.h 
+    src/Component.cpp 
+    src/GameObject.h 
+    src/GameObject.cpp 
+    src/TransformComponent.h 
+    src/TransformComponent.cpp 
+    src/RenderMeshComponent.h 
+    src/RenderMeshComponent.cpp
+    src/MaterialComponent.h 
+    src/MaterialComponent.cpp 
+    src/Camera.h 
+    src/Camera.cpp 
+    src/GUIManager.h 
+    src/GUIManager.cpp 
+    src/GUIElement.cpp 
+    src/GUIElement.h 
+    src/ResMan.h 
+    src/ResMan.cpp 
+    src/UUID.h 
+    src/UUID.cpp 
+    src/Resource.h
+)
 
 target_link_libraries(VroomEngine PRIVATE SDL3::SDL3 SDL3_image::SDL3_image fmt::fmt glad::glad assimp::assimp glm::glm imgui::imgui)

@@ -12,6 +12,7 @@
 #include "assimp/postprocess.h"
 #include "assimp/mesh.h"
 #include <limits>
+#include "Resource.h"
 
 
 using namespace std;
@@ -29,9 +30,9 @@ struct AABB {
 };
 
 class Texture;
- 
 
-class Mesh {
+
+class Mesh : public Resource {
 public:
     // mesh data
     vector<Vertex>       vertices;
@@ -39,23 +40,29 @@ public:
     vector<Texture>      textures;
 
     vector<glm::vec3>    normals;
-    
+
     AABB meshAABB;
 
+    Mesh() : Resource(ResourceType::MESH, "EmptyMesh") {}
+
+    // CORRECCIÓN: Solo la declaración, sin cuerpo ni lista de inicialización
     Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures);
+
+    void Load() override;
+
     ~Mesh();
     void CalculateNormals();
     void CalculateAABB();
     void DrawAABB(Shader& shader, const glm::mat4& modelMatrix, const glm::vec4& color);
-    void Draw(Shader &shader);
+    void Draw(Shader& shader);
     bool drawVertNormals = false;
     bool drawFaceNormals = false;
-    
+
 
 private:
     //  render data
     unsigned int VAO, VBO, EBO;
 
     void setupMesh();
-    
+
 };

@@ -26,6 +26,7 @@ public:
 	void ConfigSetUp(bool* show);
 	void HierarchySetUp(bool* show);
 	void InspectorSetUp(bool* show);
+	void AssetSetUp(bool* show);
 
 	//other
 	void DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_ptr<GameObject>& selected);
