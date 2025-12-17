@@ -32,6 +32,9 @@ public:
     float xpos;
     float ypos;
 
+    float nearPlane;
+    float farPlane;
+
     // Matrices (accesibles desde OpenGL para renderizar)
     glm::mat4 viewMat;
     glm::mat4 projectionMat;

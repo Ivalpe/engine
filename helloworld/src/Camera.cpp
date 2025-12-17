@@ -7,6 +7,9 @@
 #include "GameObject.h"
 #include "TransformComponent.h"
 #include <glm/gtx/string_cast.hpp>
+#include "RenderMeshComponent.h"
+#include "Mesh.h"
+#include <limits>
 
 
 Camera::Camera() : Module()
@@ -17,16 +20,20 @@ Camera::Camera() : Module()
 	cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 	cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 	targetPos = glm::vec3(0.0f, 0.0f, 0.0f);
-	yaw = -90.0f; // Mirando hacia -Z (lo estándar en OpenGL)
+	yaw = -90.0f;
 	pitch = 0.0f;
 	fov = 45.0f;
-	distance = glm::length(cameraPos - targetPos); // Distancia inicial (3.0f)
+	distance = glm::length(cameraPos - targetPos);
 
 	firstMouse = true;
 	lastX = 0.0f;
 	lastY = 0.0f;
 	xpos = 0.0f;
 	ypos = 0.0f;
+
+	fov = 45.0f;
+	nearPlane = 0.1f;
+	farPlane = 5000.0f;
 }
 
 Camera::~Camera()
@@ -239,45 +246,85 @@ void Camera::ProcessScrollZoom(float delta, bool isMouseScroll)
 	}
 }
 
-void Camera::FocusObject(bool firstTime) {
+void Camera::FocusObject(bool firstTime)
+{
 	if (Application::GetInstance().input.get()->GetKey(SDL_SCANCODE_F) == KEY_DOWN || firstTime)
 	{
 		std::shared_ptr<GameObject> selectedObj;
-		if (firstTime)
-			selectedObj = Application::GetInstance().guiManager->sceneObjects[0];
+		auto& sceneObjs = Application::GetInstance().guiManager->sceneObjects;
+
+		if (firstTime && !sceneObjs.empty())
+			selectedObj = sceneObjs[0];
 		else
 			selectedObj = Application::GetInstance().guiManager->selectedObject;
 
 		if (selectedObj)
 		{
-			auto transformComp = std::dynamic_pointer_cast<TransformComponent>(
+			fov = 60.0f;
+
+			auto transform = std::dynamic_pointer_cast<TransformComponent>(
 				selectedObj->GetComponent(ComponentType::TRANSFORM)
 			);
 
-			if (transformComp)
+			auto meshRenderer = std::dynamic_pointer_cast<RenderMeshComponent>(
+				selectedObj->GetComponent(ComponentType::MESH_RENDERER)
+			);
+
+			glm::vec3 finalTarget = glm::vec3(0.0f);
+			float finalDistance = 5.0f;
+
+			if (transform && meshRenderer && meshRenderer->GetMesh() && !meshRenderer->GetMesh()->vertices.empty())
 			{
-				glm::vec3 targetPosition = transformComp->GetWorldPosition();
+				auto mesh = meshRenderer->GetMesh();
 
-				UpdateCameraVectors();
-				const float focusDistance = 7.0f;
-				const float heightOffset = 1.0f;
+				glm::vec3 minAABB(std::numeric_limits<float>::max());
+				glm::vec3 maxAABB(std::numeric_limits<float>::lowest());
 
-				cameraPos = targetPosition - cameraFront * focusDistance + glm::vec3(0, heightOffset, 0);
+				for (const auto& v : mesh->vertices) {
+					minAABB = glm::min(minAABB, v.Position);
+					maxAABB = glm::max(maxAABB, v.Position);
+				}
 
-				targetPos = targetPosition;
-				distance = glm::length(cameraPos - targetPos);
+				glm::mat4 globalModel = transform->GetGlobalTransform();
+				glm::vec3 corners[8] = {
+					{minAABB.x, minAABB.y, minAABB.z}, {minAABB.x, minAABB.y, maxAABB.z},
+					{minAABB.x, maxAABB.y, minAABB.z}, {minAABB.x, maxAABB.y, maxAABB.z},
+					{maxAABB.x, minAABB.y, minAABB.z}, {maxAABB.x, minAABB.y, maxAABB.z},
+					{maxAABB.x, maxAABB.y, minAABB.z}, {maxAABB.x, maxAABB.y, maxAABB.z}
+				};
 
-				glm::vec3 direction = glm::normalize(targetPos - cameraPos);
-				yaw = glm::degrees(atan2(direction.z, direction.x));
-				pitch = glm::degrees(asin(direction.y));
+				glm::vec3 worldMin(std::numeric_limits<float>::max());
+				glm::vec3 worldMax(std::numeric_limits<float>::lowest());
+
+				for (int i = 0; i < 8; i++) {
+					glm::vec4 worldPt = globalModel * glm::vec4(corners[i], 1.0f);
+					worldMin = glm::min(worldMin, glm::vec3(worldPt));
+					worldMax = glm::max(worldMax, glm::vec3(worldPt));
+				}
+
+				finalTarget = (worldMin + worldMax) * 0.5f;
+				float objectSize = glm::length(worldMax - worldMin);
+				finalDistance = objectSize * 2.0f;
 			}
+			else if (transform)
+			{
+				finalTarget = transform->GetWorldPosition();
+				finalDistance = 5.0f;
+			}
+
+			if (finalDistance < 2.0f) finalDistance = 2.0f;
+
+			targetPos = finalTarget;
+			distance = finalDistance;
+
+			cameraPos = targetPos - cameraFront * distance;
 		}
 	}
 }
 
 void Camera::RecalculateMatrices(int windowW, int windowH)
 {
-	float aspectRatio = (float)Application::GetInstance().window.get()->width / (float)Application::GetInstance().window.get()->height;
-	projectionMat = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 100.0f);
+	float aspectRatio = (float)windowW / (float)windowH;
+	projectionMat = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
 	viewMat = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }

@@ -300,33 +300,22 @@ bool Render::DrawMesh(Mesh mesh, unsigned int shaderProgram, unsigned int VAO) c
 }
 
 void Render::DrawGrid() {
+	float gridSize = 1000.0f;
+	float step = 20.0f;
 
-	float lineX = -100.0f;
-	float lineZ = -100.0f;
+	glLineWidth(1.0f);
+	glBegin(GL_LINES);
 
-	float lineLength = 100.0f;
-	for (int i = 0; i < 1000; i++) {
-		
-		glLineWidth(1.0f);
-		
-		glBegin(GL_LINES);
+	for (float x = -gridSize; x <= gridSize; x += step) {
 
-		//X AXIS LINES
-		glVertex3f(-lineLength, 0.0f, lineZ);
-		glVertex3f(lineLength, 0.0f, lineZ);
-
-		//Z AXIS LINES
-		glVertex3f(lineX, 0.f, -lineLength);
-		glVertex3f(lineX, 0.f, lineLength);
-
-		glEnd();
-		
-
-		lineX++;
-		lineZ++;
+		glVertex3f(x, 0.0f, -gridSize);
+		glVertex3f(x, 0.0f, gridSize);
 	}
 
-	glClearColor;
+	for (float z = -gridSize; z <= gridSize; z += step) {
+		glVertex3f(-gridSize, 0.0f, z);
+		glVertex3f(gridSize, 0.0f, z);
+	}
 
-
+	glEnd();
 }

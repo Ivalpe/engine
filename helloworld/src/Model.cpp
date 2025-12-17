@@ -36,6 +36,13 @@ void Model::loadModel(string path) {
     directory = fullPath.substr(0, fullPath.find_last_of('/'));
     fileName = fullPath.substr(fullPath.find_last_of('/') + 1, fullPath.find_last_of('.') - (fullPath.find_last_of('/') + 1));
 
+    size_t last_slash = fullPath.find_last_of('/');
+    if (last_slash != std::string::npos) {
+        directory = fullPath.substr(0, last_slash);
+    }
+    else {
+        directory = ".";
+    }
 
 
     stbi_set_flip_vertically_on_load(fileExtension == "obj");
@@ -153,7 +160,7 @@ void Model::Draw(Shader& shader) {
         auto transform = std::dynamic_pointer_cast<TransformComponent>(transformComp);
         if (!transform) continue;
 
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        glm::mat4 modelMatrix = transform->GetGlobalTransform();
         
         //trigger checkerboard texture
         if (useDefaultTexture) {
@@ -184,13 +191,35 @@ void Model::Draw(Shader& shader) {
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
 
         if (gameObject->isSelected) {
-            // Dibujamos la caja en color magenta, usando la matriz global calculada.
             mesh->DrawAABB(shader, modelMatrix, glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
         }
 
         //draw the mesh
         renderer->GetMesh()->Draw(shader);
     }
+}
+
+std::string Model::normalizePath(const std::string& path) {
+    std::vector<std::string> parts;
+    std::stringstream ss(path);
+    std::string segment;
+
+    while (std::getline(ss, segment, '/')) {
+        if (segment == ".." && !parts.empty() && parts.back() != "..") {
+            parts.pop_back();
+        }
+        else if (segment != "." && !segment.empty()) {
+            parts.push_back(segment);
+        }
+    }
+    std::string normalized = "";
+    for (size_t i = 0; i < parts.size(); ++i) {
+        normalized += parts[i];
+        if (i < parts.size() - 1) {
+            normalized += '/';
+        }
+    }
+    return normalized;
 }
 
 void Model::processNodeWithGameObjects(aiNode* node, const aiScene* scene, shared_ptr<GameObject> parent) {
@@ -304,13 +333,82 @@ vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
         aiString str;
         mat->GetTexture(type, i, &str);
-        
-        textures.push_back(GetOrLoadTexture(fullPath, str.C_Str(), typeName));
+
+        string rawFilename = string(str.C_Str());
+
+        std::replace(rawFilename.begin(), rawFilename.end(), '\\', '/');
+        rawFilename.erase(0, rawFilename.find_first_not_of(' '));
+        if (rawFilename.empty()) continue;
+        rawFilename.erase(rawFilename.find_last_not_of(' ') + 1);
+
+        string path = rawFilename;
+
+        size_t last_slash = path.find_last_of('/');
+        string baseFilename = (last_slash == string::npos) ? path : path.substr(last_slash + 1);
+
+        string fullTexturePath = directory + '/' + baseFilename;
+
+        fullTexturePath = normalizePath(fullTexturePath);
+
+        string currentTypeName = typeName;
+
+        string lowerFilename = baseFilename;
+        std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
+
+
+        if (lowerFilename.find("_c.") != string::npos || lowerFilename.find("_color.") != string::npos) {
+            currentTypeName = "texture_diffuse";
+        }
+        else if (lowerFilename.find("_n.") != string::npos || lowerFilename.find("normal.") != string::npos) {
+            currentTypeName = "texture_normal";
+        }
+        else if (lowerFilename.find("_s.") != string::npos || lowerFilename.find("specular.") != string::npos) {
+            currentTypeName = "texture_specular";
+        }
+        else if (lowerFilename.find("_r.") != string::npos || lowerFilename.find("roughness.") != string::npos) {
+            currentTypeName = "texture_roughness";
+        }
+        else if (lowerFilename.find("_m.") != string::npos || lowerFilename.find("metallic.") != string::npos) {
+            currentTypeName = "texture_metallic";
+        }
+        else if (lowerFilename.find("ao.") != string::npos || lowerFilename.find("ambient.") != string::npos) {
+            currentTypeName = "texture_ao";
+        }
+
+        LOG("Textura buscada en: %s, reconocida como: %s", fullTexturePath.c_str(), currentTypeName.c_str());
+
+        textures.push_back(GetOrLoadTexture(fullTexturePath, baseFilename, currentTypeName));
     }
-
-    
-
     return textures;
+}
+
+Texture Model::CreateSolidColorTexture(glm::vec4 color, const std::string& typeName) {
+    Texture texture;
+
+    glGenTextures(1, &texture.id);
+
+    unsigned char data[4];
+    data[0] = (unsigned char)(color.r * 255.0f); // R
+    data[1] = (unsigned char)(color.g * 255.0f); // G
+    data[2] = (unsigned char)(color.b * 255.0f); // B
+    data[3] = (unsigned char)(color.a * 255.0f); // A
+
+    glBindTexture(GL_TEXTURE_2D, texture.id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    texture.mapType = typeName;
+    texture.path = "GeneratedSolidColor";
+
+    Application::GetInstance().textures.get()->textures_loaded.push_back(texture);
+
+    LOG("Created 1x1 solid color texture for material.");
+
+    return texture;
 }
 
 void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMesh* aiMesh, const aiScene* scene)
@@ -365,6 +463,8 @@ void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMe
             indices.push_back(face.mIndices[j]);
     }
 
+    glm::vec4 diffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+
     // --- Load material textures ---
     if (aiMesh->mMaterialIndex >= 0)
     {
@@ -387,11 +487,19 @@ void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMe
 
         auto aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao");
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
+
+        aiColor4D color;
+        if (AI_SUCCESS == aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &color))
+        {
+            diffuseColor = glm::vec4(color.r, color.g, color.b, color.a);
+            LOG("    - Material color retrieved from Assimp: (%.2f, %.2f, %.2f, %.2f)", color.r, color.g, color.b, color.a);
+        }
     }
-    if(textures.empty()) {
-        AssignDefaultTexture(textures);
-        std::vector<Texture> diffuseMaps;
-        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+
+    if (textures.empty()) {
+        Texture solidTex = CreateSolidColorTexture(diffuseColor, "texture_diffuse");
+        textures.push_back(solidTex);
+        LOG("Assigned solid color texture (based on material color) to mesh.");
     }
 
     // --- Create Mesh ---

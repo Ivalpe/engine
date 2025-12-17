@@ -43,5 +43,6 @@ public:
     // Obtiene la extensión en minúsculas (ej: ".fbx")
     std::string GetFileExtension(const std::string& path);
 
+
 private:
 };

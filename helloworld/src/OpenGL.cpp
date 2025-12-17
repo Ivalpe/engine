@@ -10,6 +10,9 @@
 #include "Input.h"
 #include "Camera.h"
 #include "GUIManager.h"
+#include "CameraComponent.h"
+#include "TransformComponent.h"
+#include "GameObject.h"
 
 OpenGL::OpenGL() : Module()
 {
@@ -93,7 +96,7 @@ bool OpenGL::Start() {
 	texCoordsShader->Use();
 
 
-	std::string modelPath = "../Assets/Models/BakerHouse/BakerHouse.fbx";
+	std::string modelPath = "../Assets/Models/Street/street2.fbx";
 	
 
 	ourModel = new Model(modelPath.c_str());
@@ -101,55 +104,103 @@ bool OpenGL::Start() {
 	Application::GetInstance().guiManager.get()->AddGameObject(ourModel);
 	Application::GetInstance().render.get()->AddModel(ourModel);
 
+	Model* cameraModel = new Model();
+	modelObjects.push_back(cameraModel);
+	Application::GetInstance().render.get()->AddModel(cameraModel);
+
+	// Obtenemos el GameObject raíz
+	std::shared_ptr<GameObject> camGO = cameraModel->GetRootGameObject();
+	camGO->SetName("Main Camera"); // Le ponemos nombre para encontrarla fácil
+
+	// IMPORTANTE: Añadimos a la lista de objetos de la escena del GUI
+	Application::GetInstance().guiManager.get()->sceneObjects.push_back(camGO);
+
+	// Añadimos el componente de cámara
+	camGO->AddComponent(ComponentType::CAMERA);
+
+	// Configuramos su posición inicial (Transform)
+	// Si no lo movemos, estará dentro del edificio (0,0,0)
+	auto transform = std::dynamic_pointer_cast<TransformComponent>(camGO->GetComponent(ComponentType::TRANSFORM));
+	if (transform)
+	{
+		// La colocamos un poco elevada y hacia atrás (Z positivo)
+		transform->SetPosition(glm::vec3(0.0f, 3.0f, 10.0f));
+
+		// Opcional: Rotarla un poco para que mire hacia abajo (Pitch negativo)
+		// transform->SetRotation(glm::vec3(-15.0f, 0.0f, 0.0f));
+	}
+
 	viewMat = glm::mat4(1.0f);
 
 
 	return true;
 }
 
-bool OpenGL::Update(float dt) {
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	//glClearColor(0.1f, 0.2f, 0.3f, 1.0f); // dark bluish background
+bool OpenGL::Update(float dt)
+{
+	// 1. Limpieza de buffer
+	// glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Opcional
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// 2. Comprobación de renderizado (backface culling, blending, etc.)
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_CULL_FACE);
 
+	// 3. ACTUALIZAR MATRICES DE CÁMARA (¡Importante hacerlo AL PRINCIPIO!)
+	// -----------------------------------------------------------------------
+	if (useGameCamera && gameCamera != nullptr) {
+		// Parche de seguridad por si borraste la cámara
+		if (!gameCamera->GetOwner() || gameCamera->GetOwner()->IsMarkedForDestroy()) {
+			useGameCamera = false;
+			gameCamera = nullptr;
+		}
+		else {
+			viewMat = gameCamera->GetViewMatrix();
+			projectionMat = gameCamera->GetProjectionMatrix();
+		}
+	}
 
-	glDisable(GL_CULL_FACE); //if defined clockwise, will not render
+	if (!useGameCamera) {
+		// Modo Editor
+		viewMat = Application::GetInstance().camera->viewMat;
+		projectionMat = Application::GetInstance().camera->projectionMat;
+	}
+	// -----------------------------------------------------------------------
 
-
-
-	//grid
-
+	// 4. DIBUJAR EL GRID (SUELO)
+	// -----------------------------------------------------------------------
 	glUseProgram(texCoordsShader->ID);
 
-	//use shader's line color instead of texture
-	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), true);
-	glUniform4f(glGetUniformLocation(texCoordsShader->ID, "lineColor"), 1.0f, 1.0f, 1.0f, 0.5f); //white grid
-
-	Application::GetInstance().render.get()->DrawGrid();
-
-	// Restore to normal texture mode
-	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), false);
-
-	viewMat = Application::GetInstance().camera->viewMat;
-	projectionMat = Application::GetInstance().camera->projectionMat;
-
-	texCoordsShader->Use();
-	texCoordsShader->setMat4("model", modelMat);
+	// A. Mandamos las matrices de cámara actualizadas
 	texCoordsShader->setMat4("view", viewMat);
 	texCoordsShader->setMat4("projection", projectionMat);
 
-	//draw all meshes
-	
+	// B. ¡CORRECCIÓN DEL ERROR!: Forzamos la matriz del modelo a Identidad (0,0,0)
+	// Así el suelo siempre estará en el centro del mundo, ignorando a la casa.
+	glm::mat4 identity = glm::mat4(1.0f);
+	texCoordsShader->setMat4("model", identity);
 
+	// C. Configuración visual del grid
+	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), true);
+	glUniform4f(glGetUniformLocation(texCoordsShader->ID, "lineColor"), 0.5f, 0.5f, 0.5f, 1.0f); // Grisáceo
+
+	Application::GetInstance().render.get()->DrawGrid();
+
+	// D. Desactivar modo líneas
+	glUniform1i(glGetUniformLocation(texCoordsShader->ID, "useLineColor"), false);
+	// -----------------------------------------------------------------------
+
+
+	// 5. DIBUJAR LOS MODELOS (CASA, CÁMARA, ETC.)
+	// -----------------------------------------------------------------------
+	// Aquí cada modelo ya manda su propia matriz "model" dentro de su función Draw,
+	// así que sobrescribirán la identidad que pusimos para el grid.
 	for (int i = 0; i < Application::GetInstance().render.get()->modelsToDraw.size(); i++) {
 		Application::GetInstance().render.get()->modelsToDraw[i]->Draw(*texCoordsShader);
 	}
 
 	return true;
-
 }
 
 
