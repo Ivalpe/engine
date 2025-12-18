@@ -14,6 +14,7 @@
 #include "CameraComponent.h"
 #include "Textures.h"
 #include "Render.h"
+#include "ResMan.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <glm/glm.hpp>
@@ -24,6 +25,8 @@
 #include <glm/gtx/transform.hpp>
 
 #include <vector>
+
+namespace fs = std::filesystem;
 
 GUIElement::GUIElement(ElementType t, GUIManager* m)
 {
@@ -383,49 +386,99 @@ void GUIElement::HierarchySetUp(bool* show)
 
 //assets menu (mirar si es mejor ponerlo abajo con el console como otra pestaña)
 
-void GUIElement::AssetSetUp(bool* show)
-{
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
+void GUIElement::AssetSetUp(bool* show) {
+	// Configuración de tamaño inicial de la ventana
+	ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
 
-	//initial states
-	ImGui::SetNextWindowDockID(0, ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_FirstUseEver);
-
-	//check if we should show it
-	if (!ImGui::Begin("AssetMenu", show, window_flags))
-	{
-		//if not -> end here
+	if (!ImGui::Begin("Asset Browser", show)) {
 		ImGui::End();
 		return;
 	}
 
-	//create objects (minim cube)
-	if (ImGui::BeginMenu("Create...")) {
-		if (ImGui::MenuItem("Empty")) {
-			//Create empty 
-			auto empty = new Model();
-			Application::GetInstance().render->AddModel(empty);
+	// Variable estática para mantener la posición de la navegación
+	static fs::path currentPath = "Assets";
 
-			//add empty model to lists
-			Application::GetInstance().openGL.get()->modelObjects.push_back(empty);
-			Application::GetInstance().guiManager.get()->sceneObjects.push_back(empty->GetRootGameObject());
+	// --- CABECERA: Navegación ---
+	ImGui::TextColored(ImVec4(1, 1, 0, 1), "Path: %s", currentPath.string().c_str());
 
+	if (currentPath != "Assets") {
+		if (ImGui::Button(" <- Back ")) {
+			currentPath = currentPath.parent_path();
 		}
-		//hacer que aqui se cargen las carpetas(cuando se hagan bien lol)
-		if (ImGui::MenuItem("Cube")) {
-			Model* defaultCube = Application::GetInstance().openGL->CreateCube();
-			Application::GetInstance().render->AddModel(defaultCube);
-		}
-		ImGui::EndMenu();
+		ImGui::SameLine();
+	}
+
+	if (ImGui::Button("Reset to Root")) {
+		currentPath = "Assets";
 	}
 
 	ImGui::Separator();
 
-	
+	// --- CUERPO: Listado de Archivos y Carpetas ---
+	// Usamos un child region para que el scroll sea independiente si la ventana es pequeña
+	ImGui::BeginChild("FileView");
 
+	try {
+		for (auto const& entry : fs::directory_iterator(currentPath)) {
+			const auto& path = entry.path();
+			std::string filename = path.filename().string();
+
+			// 1. Lógica para CARPETAS
+			if (entry.is_directory()) {
+				// Ocultar la carpeta Library para que el usuario no la toque manualmente
+				if (filename == "Library") continue;
+
+				// Usamos un icono visual [D] para directorios
+				if (ImGui::Selectable((std::string("[D] ") + filename).c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+					if (ImGui::IsMouseDoubleClicked(0)) {
+						currentPath /= path.filename();
+					}
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Double click to enter folder");
+				}
+			}
+			// 2. Lógica para ARCHIVOS
+			else {
+				// Ocultar archivos .meta
+				if (path.extension() == ".meta") continue;
+
+				// Dibujar el nombre del archivo
+				ImGui::TextDisabled("[F]"); ImGui::SameLine();
+				ImGui::Text("%s", filename.c_str());
+
+				// --- VISUALIZADOR DE REFERENCIAS ---
+				auto& resMan = ResourceManager::GetInstance();
+
+				// Comprobamos si el recurso está en la caché del ResourceManager
+				// Nota: Usamos la ruta del asset como clave
+				if (resMan.IsResourceLoaded(path.string())) {
+					auto res = resMan.GetResource(path.string());
+					if (res) {
+						// Alineamos el conteo de referencias a la derecha
+						ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 120);
+
+						long count = res.use_count() - 1; // -1 porque el mapa m_resources tiene una
+
+						if (count > 0) {
+							ImGui::TextColored(ImVec4(0, 1, 0, 1), "[Refs: %ld]", count);
+						}
+						else {
+							// Si count es 0, significa que solo el ResourceManager lo conoce pero nadie lo usa
+							ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), "[Unused]");
+						}
+					}
+				}
+			}
+		}
+	}
+	catch (const std::exception& e) {
+		ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: Could not read directory.");
+	}
+
+	ImGui::EndChild();
 	ImGui::End();
 }
-
 
 
 void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_ptr<GameObject>& selected) {
