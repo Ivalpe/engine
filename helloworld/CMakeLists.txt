@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
+
 add_compile_definitions(_HAS_STD_BYTE=0)
 
 project(VroomEngine)
@@ -7,6 +8,10 @@ project(VroomEngine)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+
+
+
 
 find_package(fmt CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
@@ -53,6 +58,8 @@ add_executable(VroomEngine
     src/MaterialComponent.cpp 
     src/Camera.h 
     src/Camera.cpp 
+     src/CameraComponent.h 
+    src/CameraComponent.cpp 
     src/GUIManager.h 
     src/GUIManager.cpp 
     src/GUIElement.cpp 
