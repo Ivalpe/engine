@@ -73,7 +73,7 @@ public:
 	bool showConfig = false;
 	bool showHierarchy = true;
 	bool showInspector = true;
-
+	bool showAssets = true;
 
 	std::vector<std::shared_ptr<GameObject>> sceneObjects;
 	std::shared_ptr<GameObject> selectedObject;

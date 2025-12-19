@@ -10,7 +10,7 @@
 #include "FileSystem.h"
 #include "GameObject.h"
 
-enum ElementType{ Additional, MenuBar, Console, Config, Hierarchy, Inspector};
+enum ElementType{ Additional, MenuBar, Console, Config, Hierarchy, Inspector,Asset};
 
 class GUIElement {
 public:

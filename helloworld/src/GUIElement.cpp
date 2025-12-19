@@ -63,6 +63,9 @@ void GUIElement::ElementSetUp()
 	case ElementType::Inspector:
 		if (Application::GetInstance().guiManager.get()->showInspector) InspectorSetUp(&Application::GetInstance().guiManager.get()->showInspector);
 		break;
+	case ElementType::Asset:
+		if (Application::GetInstance().guiManager.get()->showAssets) InspectorSetUp(&Application::GetInstance().guiManager.get()->showAssets);
+		break;
 	default:
 		LOG("No GUIType detected.");
 		break;
@@ -98,6 +101,10 @@ void GUIElement::MenuBarSetUp()
 			if (ImGui::MenuItem("Inspector", nullptr, Application::GetInstance().guiManager.get()->showInspector)) {
 				bool set = !Application::GetInstance().guiManager.get()->showInspector;
 				Application::GetInstance().guiManager.get()->showInspector = set;
+			}
+			if (ImGui::MenuItem("Asset", nullptr, Application::GetInstance().guiManager.get()->showAssets)) {
+				bool set = !Application::GetInstance().guiManager.get()->showAssets;
+				Application::GetInstance().guiManager.get()->showAssets = set;
 			}
 
 			ImGui::EndMenu();
@@ -218,7 +225,7 @@ void GUIElement::ConsoleSetUp(bool* show) {
 
 	//initial states
 	ImGui::SetNextWindowDockID(0, ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(350, 300), ImGuiCond_FirstUseEver);
 
 	//check if we should show it
 	if (!ImGui::Begin("Console", show, window_flags))
@@ -389,8 +396,9 @@ void GUIElement::HierarchySetUp(bool* show)
 void GUIElement::AssetSetUp(bool* show) {
 	// Configuración de tamaño inicial de la ventana
 	ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowDockID(3, ImGuiCond_FirstUseEver);
 
-	if (!ImGui::Begin("Asset Browser", show)) {
+	if (!ImGui::Begin("Assets", show)) {
 		ImGui::End();
 		return;
 	}
