@@ -64,7 +64,7 @@ void GUIElement::ElementSetUp()
 		if (Application::GetInstance().guiManager.get()->showInspector) InspectorSetUp(&Application::GetInstance().guiManager.get()->showInspector);
 		break;
 	case ElementType::Asset:
-		if (Application::GetInstance().guiManager.get()->showAssets) InspectorSetUp(&Application::GetInstance().guiManager.get()->showAssets);
+		if (Application::GetInstance().guiManager.get()->showAssets) AssetSetUp(&Application::GetInstance().guiManager.get()->showAssets);
 		break;
 	default:
 		LOG("No GUIType detected.");
