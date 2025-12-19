@@ -395,10 +395,11 @@ void GUIElement::HierarchySetUp(bool* show)
 
 void GUIElement::AssetSetUp(bool* show) {
 	// Configuración de tamaño inicial de la ventana
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
 	ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowDockID(3, ImGuiCond_FirstUseEver);
 
-	if (!ImGui::Begin("Assets", show)) {
+	if (!ImGui::Begin("Assets", show, window_flags)) {
 		ImGui::End();
 		return;
 	}
