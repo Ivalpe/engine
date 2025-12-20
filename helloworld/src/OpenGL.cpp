@@ -49,8 +49,9 @@ bool OpenGL::Start() {
 	/*stbi_set_flip_vertically_on_load(true);*/
 
 
-
-	texCoordsShader = new Shader("TexCoordsShader.vert", "TexCoordsShader.frag");
+	// --- CORRECCIÓN 1: Rutas de los Shaders completas desde Assets ---
+	// Si esto falla, el objeto se ve BLANCO porque no hay shader.
+	texCoordsShader = new Shader("Assets/Shaders/TexCoordsShader.vert", "Assets/Shaders/TexCoordsShader.frag");
 
 	/*normalShader = new Shader("")*/
 
@@ -63,9 +64,8 @@ bool OpenGL::Start() {
 	//3D transformation matrices  --> Vclip = Mprojection⋅Mview⋅Mmodel⋅Vlocal
 
 	modelMat = glm::mat4(1.0f);
-	modelMat = glm::rotate(modelMat, glm::radians(45.0f), glm::vec3(0.0f, -1.0f, 0.0f)); //transforms vertex coordinates into world coordinates.
+	modelMat = glm::rotate(modelMat, glm::radians(45.0f), glm::vec3(0.0f, -1.0f, 0.0f));
 	//^rotates on the x axis so it looks like laying on the floor
-	/*modelMat = glm::scale(modelMat, glm::vec3(0.05, 0.05, 0.05));*/
 
 	texCoordsShader->Use();
 	uint modelMatLoc = glad_glGetUniformLocation(texCoordsShader->ID, "model");
@@ -75,7 +75,6 @@ bool OpenGL::Start() {
 	// translate scene in the reverse direction of moving direction
 	viewMat = glm::translate(viewMat, glm::vec3(0.0f, -2.0f, -15.0f));
 
-	//OpenGL = righthanded system --> move cam in  positive z-axis (= translate scene towards negative z-axis)
 	texCoordsShader->Use();
 	uint viewMatLoc = glad_glGetUniformLocation(texCoordsShader->ID, "view");
 	glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(viewMat));
@@ -96,8 +95,10 @@ bool OpenGL::Start() {
 	texCoordsShader->Use();
 
 
-	std::string modelPath = "../Assets/Models/Street/street2.fbx";
-	
+	// --- CORRECCIÓN 2: Ruta del Modelo corregida ---
+	// Sin los dos puntos (..) y sin barra inicial. Directo a Assets.
+	std::string modelPath = "Assets/Models/Street/street2.fbx";
+
 
 	ourModel = new Model(modelPath.c_str());
 	modelObjects.push_back(ourModel);
@@ -110,28 +111,22 @@ bool OpenGL::Start() {
 
 	// Obtenemos el GameObject raíz
 	std::shared_ptr<GameObject> camGO = cameraModel->GetRootGameObject();
-	camGO->SetName("Main Camera"); // Le ponemos nombre para encontrarla fácil
+	camGO->SetName("Main Camera");
 
-	// IMPORTANTE: Añadimos a la lista de objetos de la escena del GUI
+	// Añadimos a la lista de objetos de la escena del GUI
 	Application::GetInstance().guiManager.get()->sceneObjects.push_back(camGO);
 
 	// Añadimos el componente de cámara
 	camGO->AddComponent(ComponentType::CAMERA);
 
-	// Configuramos su posición inicial (Transform)
-	// Si no lo movemos, estará dentro del edificio (0,0,0)
+	// Configuramos su posición inicial
 	auto transform = std::dynamic_pointer_cast<TransformComponent>(camGO->GetComponent(ComponentType::TRANSFORM));
 	if (transform)
 	{
-		// La colocamos un poco elevada y hacia atrás (Z positivo)
 		transform->SetPosition(glm::vec3(0.0f, 3.0f, 10.0f));
-
-		// Opcional: Rotarla un poco para que mire hacia abajo (Pitch negativo)
-		// transform->SetRotation(glm::vec3(-15.0f, 0.0f, 0.0f));
 	}
 
 	viewMat = glm::mat4(1.0f);
-
 
 	return true;
 }
