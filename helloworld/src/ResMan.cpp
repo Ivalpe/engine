@@ -71,6 +71,19 @@ std::shared_ptr<Resource> ResourceManager::InternalLoad(const std::string& path,
     return newResource;
 }
 
+std::shared_ptr<Mesh> ResourceManager::LoadMesh(const std::string& path) {
+    // Llamamos a tu lógica interna indicando que es una "Mesh"
+    std::shared_ptr<Resource> res = InternalLoad(path, "Mesh");
+
+    // Convertimos el recurso genérico a Mesh
+    return std::dynamic_pointer_cast<Mesh>(res);
+}
+
+std::shared_ptr<Texture> ResourceManager::LoadTexture(const std::string& path) {
+    std::shared_ptr<Resource> res = InternalLoad(path, "Texture");
+    return std::dynamic_pointer_cast<Texture>(res);
+}
+
 // ---------------------------------------------------------------------
 // IMPORTACIÓN Y GUARDADO (ESCRITURA BINARIA)
 // ---------------------------------------------------------------------

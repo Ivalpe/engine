@@ -3,6 +3,10 @@
 #include <iostream>
 #include "TransformComponent.h"
 #include "Application.h"
+#include "RenderMeshComponent.h"
+#include "MaterialComponent.h"
+#include "ResMan.h"
+#include "FileSystem.h"
 
 // --- GUARDAR ---
 
@@ -32,7 +36,7 @@ json SceneSerializer::SerializeGameObject(std::shared_ptr<GameObject> go) {
     auto transform = std::dynamic_pointer_cast<TransformComponent>(go->GetComponent(ComponentType::TRANSFORM));
     if (transform) {
         glm::vec3 pos = transform->GetPosition();
-        glm::vec3 rot = transform->GetEulerAngles(); // <--- CAMBIO AQUÍ (antes era GetRotation)
+        glm::vec3 rot = transform->GetEulerAngles(); 
         glm::vec3 scale = transform->GetScale();
 
         j["components"]["transform"] = {
@@ -42,16 +46,24 @@ json SceneSerializer::SerializeGameObject(std::shared_ptr<GameObject> go) {
         };
     }
 
-    // 2. Mesh Renderer (Ejemplo)
-    // Aquí deberías guardar la ruta al asset del mesh para poder volver a cargarlo
-    /*
     auto meshRenderer = std::dynamic_pointer_cast<RenderMeshComponent>(go->GetComponent(ComponentType::MESH_RENDERER));
     if (meshRenderer && meshRenderer->GetMesh()) {
-         j["components"]["meshRenderer"] = {
-             {"assetPath", meshRenderer->GetMesh()->GetAssetsPath()}
-         };
+        
+
+        j["components"]["meshRenderer"] = {
+            {"path", meshRenderer->GetMesh()->GetAssetsPath()}
+        };
     }
-    */
+
+    // 3. Material (Textura)
+    auto material = std::dynamic_pointer_cast<MaterialComponent>(go->GetComponent(ComponentType::MATERIAL));
+    if (material && material->GetDiffuseMap()) {
+        j["components"]["material"] = {
+            {"diffusePath", material->GetDiffuseMap()->path}
+        };
+    }
+
+
 
     // 3. Recursividad para hijos
     j["children"] = json::array();
@@ -88,14 +100,9 @@ void SceneSerializer::LoadScene(const std::string& filepath, std::shared_ptr<Gam
 void SceneSerializer::DeserializeGameObject(const json& j, std::shared_ptr<GameObject> parent) {
     std::string name = j.value("name", "GameObject");
 
-    // Crear objeto
-    // Nota: Necesitas acceso a tu factoría o crear el objeto directamente
-    // Como Application::GetInstance().openGL... o similar.
-    // Asumiré que puedes crear un GO vacío y asignarle padre.
-
     auto newGO = std::make_shared<GameObject>(name);
     newGO->SetParent(parent);
-    parent->AddChild(newGO); // Importante vincularlo
+    parent->AddChild(newGO);
 
     if (j.contains("active")) newGO->SetActive(j["active"]);
 
@@ -103,7 +110,7 @@ void SceneSerializer::DeserializeGameObject(const json& j, std::shared_ptr<GameO
     if (j.contains("components")) {
         auto components = j["components"];
 
-        // Transform
+        // --- 1. TRANSFORM ---
         if (components.contains("transform")) {
             auto t = components["transform"];
             auto transComp = std::dynamic_pointer_cast<TransformComponent>(newGO->GetComponent(ComponentType::TRANSFORM));
@@ -115,13 +122,46 @@ void SceneSerializer::DeserializeGameObject(const json& j, std::shared_ptr<GameO
                 glm::vec3 scale(t["scale"][0], t["scale"][1], t["scale"][2]);
 
                 transComp->SetPosition(pos);
-                transComp->SetRotation(rot); // Asegúrate de que SetRotation acepte Euler
+                transComp->SetRotation(rot);
                 transComp->SetScale(scale);
             }
         }
 
-        // Mesh Renderer
-        // if (components.contains("meshRenderer")) { ... Cargar Mesh usando ResMan ... }
+        // --- 2. MESH RENDERER (Aquí va lo nuevo) ---
+        if (components.contains("meshRenderer")) {
+            std::string meshPath = components["meshRenderer"]["path"];
+
+            // --- CAMBIO AQUÍ ---
+            // Antes: auto mesh = ResourceManager::GetInstance().Load<Mesh>(meshPath);
+            auto mesh = ResourceManager::GetInstance().LoadMesh(meshPath);
+            // -------------------
+
+            if (mesh) {
+                auto meshComp = std::dynamic_pointer_cast<RenderMeshComponent>(newGO->AddComponent(ComponentType::MESH_RENDERER));
+                if (meshComp) meshComp->SetMesh(mesh);
+            }
+        }
+
+        // --- 3. MATERIAL (Aquí va lo nuevo) ---
+        if (components.contains("material")) {
+            std::string texPath = components["material"]["diffusePath"];
+
+            auto materialComp = std::dynamic_pointer_cast<MaterialComponent>(newGO->AddComponent(ComponentType::MATERIAL));
+
+            // Si AddComponent ya crea el componente y lo devuelve:
+            if (materialComp) {
+                auto texture = std::make_shared<Texture>();
+
+                // Extraemos directorio y archivo para tu función TextureFromFile
+                std::string filename = FileSystem::GetFileName(texPath);
+                // Truco: Si texPath es "Assets/Textures/wall.jpg", dir es "Assets/Textures"
+                std::string dir = texPath.substr(0, texPath.find_last_of('/'));
+
+                // Cargar
+                texture->TextureFromFile(dir, filename.c_str());
+                materialComp->SetDiffuseMap(texture);
+            }
+        }
     }
 
     // Recursividad Hijos

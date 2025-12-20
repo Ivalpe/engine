@@ -35,13 +35,16 @@ public:
 
     // --- Helpers de String ---
     // Normaliza barras '/' y '\\' para evitar errores
-    std::string NormalizePath(const std::string& path);
+    static std::string NormalizePath(const std::string& path);
+
     // Separa el nombre del archivo de la ruta (ej: "Assets/model.fbx" -> "model.fbx")
-    std::string GetFileName(const std::string& path);
+    static std::string GetFileName(const std::string& path); 
+
     // Separa solo el nombre sin extensión (ej: "model")
-    std::string GetFileNameNoExtension(const std::string& path);
+    static std::string GetFileNameNoExtension(const std::string& path); 
+
     // Obtiene la extensión en minúsculas (ej: ".fbx")
-    std::string GetFileExtension(const std::string& path);
+    static std::string GetFileExtension(const std::string& path);
 
 
 private:

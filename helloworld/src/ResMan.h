@@ -22,8 +22,8 @@
             
             static ResourceManager& GetInstance();
 
-            template <typename T>
-            std::shared_ptr<T> Load(const std::string& path);
+            std::shared_ptr<Mesh> LoadMesh(const std::string& path);    
+            std::shared_ptr<Texture> LoadTexture(const std::string& path);
 
            
             void CleanUp();
