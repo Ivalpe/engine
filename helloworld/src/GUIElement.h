@@ -36,4 +36,5 @@ private:
 	ElementType type;
 	GUIManager* manager;
 	void DrawDirectoryRecursive(const std::filesystem::path& dirPath);
+	void DrawFileNode(const std::string& path);
 };

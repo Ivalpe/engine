@@ -149,18 +149,27 @@ bool Input::PreUpdate()
 
 
 		case SDL_EVENT_DROP_FILE:
-			/*windowID = Application::GetInstance().window.get()->GetWindowID();*/
+			///////*windowID = Application::GetInstance().window.get()->GetWindowID();*/
 			droppedFileDir = event.drop.data;
-			
-			
-			
+			//////
+			//////
+			//////
 
-			ProcessDroppedFile(droppedFileDir);
-			
-			
-			
-			//not needed in SDL3, the new allocated memory created  gets freed automatically
-			/*SDL_free(&droppedFileDir);*/
+			//////ProcessDroppedFile(droppedFileDir);
+			//////
+			//////
+			//////
+			////////not needed in SDL3, the new allocated memory created  gets freed automatically
+			///////*SDL_free(&droppedFileDir);*/
+
+			//const char* droppedPath = event.drop.data;
+
+			if (droppedFileDir != nullptr) {
+				// Accedemos al FileSystem a través de la instancia de Application
+				Application::GetInstance().fileSystem->HandleExternalFileDrop(droppedFileDir);
+			}
+
+
 			break;
 
 		case SDL_EVENT_MOUSE_WHEEL:

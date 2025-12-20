@@ -280,3 +280,41 @@ bool FileSystem::NeedsReimport(const std::string& source, const std::string& des
         return true; // Ante la duda, re-importamos
     }
 }
+
+void FileSystem::DeleteAssetCompletely(const std::string& assetPath) {
+    // 1. Borrar el archivo original y su .meta
+    Delete(assetPath);
+    Delete(assetPath + ".meta");
+
+    // 2. Borrar el binario en Library
+    // Calculamos la ruta espejo como hicimos en ProcessAsset
+    std::string cleanSource = NormalizePath(assetPath);
+    std::string relativePath = cleanSource;
+    std::string assetsPrefix = "Assets/";
+    size_t pos = cleanSource.find(assetsPrefix);
+    if (pos != std::string::npos) {
+        relativePath = cleanSource.substr(pos + assetsPrefix.length());
+    }
+
+    std::string libraryPath = "Assets/Library/" + relativePath + ".bin";
+    Delete(libraryPath);
+
+    LOG("[FileSystem] Asset eliminado por completo: %s", relativePath.c_str());
+}
+
+void FileSystem::HandleExternalFileDrop(const std::string& externalPath, const std::string& targetFolder) {
+    if (!Exists(externalPath)) return;
+
+    std::string fileName = GetFileName(externalPath);
+    std::string destination = targetFolder + "/" + fileName;
+    destination = NormalizePath(destination);
+
+    LOG("[FileSystem] Detectado archivo externo: %s. Copiando a: %s", fileName.c_str(), destination.c_str());
+
+    // 1. Copiamos el archivo físicamente a nuestra carpeta de Assets
+    if (Copy(externalPath, destination)) {
+        // 2. Llamamos a ProcessAsset para que genere el .meta y lo meta en Library
+        ProcessAsset(destination);
+        LOG("[FileSystem] Archivo importado con exito.");
+    }
+}

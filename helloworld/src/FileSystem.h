@@ -49,8 +49,11 @@ public:
     std::string GetFileNameNoExtension(const std::string& path);
     // Obtiene la extensión en minúsculas (ej: ".fbx")
     std::string GetFileExtension(const std::string& path);
-
+    void DeleteAssetCompletely(const std::string& assetPath);
+    // Procesa un archivo arrastrado desde fuera del motor
+    void HandleExternalFileDrop(const std::string& externalPath, const std::string& targetFolder = "Assets");
 
 private:
     bool NeedsReimport(const std::string& source, const std::string& destination);
+    
 };

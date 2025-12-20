@@ -503,6 +503,16 @@ void GUIElement::AssetSetUp(bool* show) {
 	// Llamamos a la función que dibuja el árbol empezando desde "Assets"
 	// Usamos una carpeta fija o la ruta raíz de tu proyecto
 	DrawDirectoryRecursive("Assets");
+	
+	ImGui::Dummy(ImGui::GetContentRegionAvail()); // Ocupar el espacio vacío
+
+	if (ImGui::BeginDragDropTarget()) {
+		// Etiqueta especial de ImGui para archivos del sistema
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILESYSTEM_DRAG_DROP")) {
+			
+		}
+		ImGui::EndDragDropTarget();
+	}
 
 	ImGui::End();
 }
@@ -538,23 +548,46 @@ void GUIElement::DrawDirectoryRecursive(const fs::path& dirPath) {
 			// Lógica de archivos (saltando .meta)
 			if (path.extension() == ".meta") continue;
 
-			ImGui::TreeNodeEx(filename.c_str(),
-				ImGuiTreeNodeFlags_Leaf |
-				ImGuiTreeNodeFlags_NoTreePushOnOpen |
-				ImGuiTreeNodeFlags_SpanFullWidth);
 
-			// Mostrar referencias si está cargado
-			auto& resMan = ResourceManager::GetInstance();
-			if (resMan.IsResourceLoaded(path.string())) {
-				auto res = resMan.GetResource(path.string());
-				if (res) {
-					ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 100);
-					ImGui::TextDisabled("[%ld]", res.use_count() - 1);
-				}
-			}
+			DrawFileNode(path.string());
+
+			//ImGui::TreeNodeEx(filename.c_str(),
+			//	ImGuiTreeNodeFlags_Leaf |
+			//	ImGuiTreeNodeFlags_NoTreePushOnOpen |
+			//	ImGuiTreeNodeFlags_SpanFullWidth);
+
+			//// Mostrar referencias si está cargado
+			//auto& resMan = ResourceManager::GetInstance();
+			//if (resMan.IsResourceLoaded(path.string())) {
+			//	auto res = resMan.GetResource(path.string());
+			//	if (res) {
+			//		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 100);
+			//		ImGui::TextDisabled("[%ld]", res.use_count() - 1);
+			//	}
+			//}
 		}
 	}
 }
+//void GUIElement::DrawFileNode(const std::string& path) {
+//	std::string fileName = Application::GetInstance().fileSystem.get()->GetFileName(path);
+//
+//	// Renderizamos el nodo del archivo
+//	ImGui::TreeNodeEx(fileName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+//
+//	// Menú contextual al hacer clic derecho
+//	if (ImGui::BeginPopupContextItem()) {
+//		if (ImGui::MenuItem("Delete File", "Del")) {
+//			//fileSystem->DeleteAssetCompletely(path);
+//			Application::GetInstance().fileSystem.get()->DeleteAssetCompletely(path);
+//		}
+//
+//		//ImGui::Separator();
+//
+//		
+//
+//		ImGui::EndPopup();
+//	}
+//}
 
 void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_ptr<GameObject>& selected) {
 	//make sure obj is not set for deletion
@@ -593,6 +626,57 @@ void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_pt
 	{
 		for (auto& child : obj->GetChildren()) DrawNode(child, selected);
 		ImGui::TreePop();
+	}
+}
+
+void GUIElement::DrawFileNode(const std::string& path) {
+	// 1. Obtener acceso al FileSystem y al nombre del archivo
+	auto fileSystem = Application::GetInstance().fileSystem.get();
+	std::string fileName = fileSystem->GetFileName(path);
+
+	// 2. Configurar flags para el nodo
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
+		ImGuiTreeNodeFlags_NoTreePushOnOpen |
+		ImGuiTreeNodeFlags_SpanFullWidth;
+
+	// 3. Dibujar el Nodo del Archivo
+	ImGui::TreeNodeEx(fileName.c_str(), flags);
+
+	// --- NUEVO: DRAG AND DROP SOURCE ---
+	if (ImGui::BeginDragDropSource()) {
+		// Enviamos la ruta del archivo como "Payload"
+		const char* pathStr = path.c_str();
+		ImGui::SetDragDropPayload("ASSET_PATH", pathStr, (strlen(pathStr) + 1) * sizeof(char));
+
+		// Feedback visual al arrastrar
+		ImGui::Text("Cargando: %s", fileName.c_str());
+		ImGui::EndDragDropSource();
+	}
+
+	// 4. LOGICA DE BORRADO (Click Derecho)
+	if (ImGui::BeginPopupContextItem()) {
+		if (ImGui::MenuItem("Delete File", "Del")) {
+			fileSystem->DeleteAssetCompletely(path);
+		}
+		ImGui::Separator();
+		ImGui::TextDisabled("%s", fileName.c_str());
+		ImGui::EndPopup();
+	}
+
+	// 5. MOSTRAR REFERENCIAS
+	auto& resMan = ResourceManager::GetInstance();
+	if (resMan.IsResourceLoaded(path)) {
+		auto res = resMan.GetResource(path);
+		if (res) {
+			ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 50);
+			long count = res.use_count() - 1;
+			if (count > 0) {
+				ImGui::TextColored(ImVec4(0, 1, 0, 1), "[%ld]", count);
+			}
+			else {
+				ImGui::TextDisabled("[0]");
+			}
+		}
 	}
 }
 
@@ -713,6 +797,8 @@ void GUIElement::InspectorSetUp(bool* show)
 					}
 				}
 			}
+
+
 		}
 	}
 	else {
