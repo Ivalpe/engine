@@ -15,6 +15,7 @@
 #include "Textures.h"
 #include "Render.h"
 
+#include "SceneSerializer.h"
 #include <SDL3/SDL_opengl.h>
 #include <glm/glm.hpp>
 #include <assimp/version.h>
@@ -71,32 +72,47 @@ void GUIElement::MenuBarSetUp()
 {
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
+
+			// --- NUEVO CÓDIGO DE GUARDADO/CARGA ---
+
+			if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {
+				// Obtenemos la lista de objetos
+				auto& sceneObjects = Application::GetInstance().guiManager->sceneObjects;
+
+				if (!sceneObjects.empty()) {
+					// NOTA: El serializador espera un objeto raíz (Root). 
+					// Si tienes varios objetos sueltos, lo ideal es guardar el primero que actúe como "Mundo" 
+					// o crear un objeto temporal que los agrupe.
+					// Por ahora, guardaremos el primer objeto de la lista (ej. tu BakerHouse):
+
+					SceneSerializer::SaveScene("Assets/Scenes/MyScene.json", sceneObjects[0]);
+					LOG("Scene Saved: Assets/Scenes/MyScene.json");
+				}
+				else {
+					LOG("Error: No objects to save");
+				}
+			}
+
+			if (ImGui::MenuItem("Load Scene", "Ctrl+O")) {
+				// 1. Crear un objeto vacío para recibir los datos
+				auto newRoot = std::make_shared<GameObject>("LoadedSceneRoot");
+
+				// 2. Cargar
+				SceneSerializer::LoadScene("Assets/Scenes/MyScene.json", newRoot);
+
+				// 3. Añadir a la lista de la escena para que se dibuje
+				Application::GetInstance().guiManager->sceneObjects.push_back(newRoot);
+
+				LOG("Scene Loaded from Assets/Scenes/MyScene.json");
+			}
+
+			ImGui::Separator();
+			// --------------------------------------
+
 			if (ImGui::MenuItem("Exit")) {
 				//handle exit
 				Application::GetInstance().requestExit = true;
 			}
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("View")) {
-			//handle view
-			if (ImGui::MenuItem("Console", nullptr, Application::GetInstance().guiManager.get()->showConsole)) {
-				bool set = !Application::GetInstance().guiManager.get()->showConsole;
-				Application::GetInstance().guiManager.get()->showConsole = set;
-			}
-			if (ImGui::MenuItem("Configuration", nullptr, Application::GetInstance().guiManager.get()->showConfig)) {
-				bool set = !Application::GetInstance().guiManager.get()->showConfig;
-				Application::GetInstance().guiManager.get()->showConfig = set;
-			}
-			if (ImGui::MenuItem("Hierarchy", nullptr, Application::GetInstance().guiManager.get()->showHierarchy)) {
-				bool set = !Application::GetInstance().guiManager.get()->showHierarchy;
-				Application::GetInstance().guiManager.get()->showHierarchy = set;
-			}
-			if (ImGui::MenuItem("Inspector", nullptr, Application::GetInstance().guiManager.get()->showInspector)) {
-				bool set = !Application::GetInstance().guiManager.get()->showInspector;
-				Application::GetInstance().guiManager.get()->showInspector = set;
-			}
-
 			ImGui::EndMenu();
 		}
 
