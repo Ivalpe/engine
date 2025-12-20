@@ -129,16 +129,16 @@ void GUIElement::MenuBarSetUp()
 		if (ImGui::BeginMenu("Help")) {
 			if (ImGui::MenuItem("Documentation")) {
 				//handle documentation
-				SDL_OpenURL("https://github.com/KaiCaire/vroom-engine?tab=readme-ov-file#readme");
+				SDL_OpenURL("https://github.com/Ivalpe/engine/blob/main/README.md");
 
 			}
 			if (ImGui::MenuItem("Report a Bug")) {
 				//handle report 
-				SDL_OpenURL("https://github.com/KaiCaire/vroom-engine/issues");
+				SDL_OpenURL("https://github.com/Ivalpe/engine/issues");
 			}
 			if (ImGui::MenuItem("Latest Release")) {
 				//handle release
-				SDL_OpenURL("https://github.com/KaiCaire/vroom-engine/releases");
+				SDL_OpenURL("https://github.com/Ivalpe/engine/releases");
 			}
 			if (ImGui::MenuItem("About")) {
 				//handle about window

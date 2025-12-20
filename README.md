@@ -1,7 +1,7 @@
 # Vroom Engine
 
 Geometry visualizer and base for a Game Engine.
-[Github link](https://github.com/KaiCaire/vroom-engine)
+[Github link](https://github.com/Ivalpe/engine)
 
 ## Description
 
@@ -48,8 +48,8 @@ Including an orbital camera and a basic editor for easier use, this version cons
       * Texture: shows game object's texture's path, width and height
 * Help
   * -> Documentation: opens this ReadMe
-  * -> Report a Bug: opens the project's [Issues](https://github.com/KaiCaire/vroom-engine/issues) page
-  * -> Latest Release: opens the project's [Releases](https://github.com/KaiCaire/vroom-engine/releases) page
+  * -> Report a Bug: opens the project's [Issues](https://github.com/Ivalpe/engine/issues) page
+  * -> Latest Release: opens the project's [Releases](https://github.com/Ivalpe/engine/releases) page
   * -> About: opens window with information about the program
 
 ### Additional Actions
@@ -68,8 +68,7 @@ Including an orbital camera and a basic editor for easier use, this version cons
 ## Authors
 
 * Ivan Alvarez -> [ivalpe](https://github.com/Ivalpe)
-* Kai Caire -> [KaiCaire](https://github.com/KaiCaire)
-* Lara Guevara -> [LaraGuevara](https://github.com/LaraGuevara)
+* Maria Besora -> [MariaBesora](https://github.com/mariabeo)
 * Bernat Loza -> [BerniF0x](https://github.com/BerniF0x)
 
 ## Created Using The Following Libraries
