@@ -31,7 +31,7 @@ void Model::loadModel(string path) {
 
     fullPath = path;
     std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
-    LOG("FullPath = %s", fullPath);
+    LOG("FullPath = %s", fullPath.c_str());
     fileExtension = fullPath.substr(fullPath.find_last_of(".") + 1);
     directory = fullPath.substr(0, fullPath.find_last_of('/'));
     fileName = fullPath.substr(fullPath.find_last_of('/') + 1, fullPath.find_last_of('.') - (fullPath.find_last_of('/') + 1));
@@ -334,27 +334,18 @@ vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
         aiString str;
         mat->GetTexture(type, i, &str);
 
-        string rawFilename = string(str.C_Str());
+        // 1. Obtenemos el nombre del archivo limpio (ignorando rutas de otros PCs)
+        string assimpPath = str.C_Str();
+        string filename = FileSystem::GetFileName(assimpPath); // Usa tu helper de FileSystem
 
-        std::replace(rawFilename.begin(), rawFilename.end(), '\\', '/');
-        rawFilename.erase(0, rawFilename.find_first_not_of(' '));
-        if (rawFilename.empty()) continue;
-        rawFilename.erase(rawFilename.find_last_not_of(' ') + 1);
+        // 2. Construimos la ruta asumiendo que la textura está EN LA MISMA CARPETA que el modelo
+        // 'directory' es la variable miembro de Model que ya calculaste en loadModel
+        string fullTexturePath = directory + "/" + filename;
 
-        string path = rawFilename;
-
-        size_t last_slash = path.find_last_of('/');
-        string baseFilename = (last_slash == string::npos) ? path : path.substr(last_slash + 1);
-
-        string fullTexturePath = directory + '/' + baseFilename;
-
-        fullTexturePath = normalizePath(fullTexturePath);
-
+        // 3. Determinar el tipo de textura automáticamente por el nombre (tu lógica actual)
         string currentTypeName = typeName;
-
-        string lowerFilename = baseFilename;
+        string lowerFilename = filename;
         std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
-
 
         if (lowerFilename.find("_c.") != string::npos || lowerFilename.find("_color.") != string::npos) {
             currentTypeName = "texture_diffuse";
@@ -375,9 +366,10 @@ vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type,
             currentTypeName = "texture_ao";
         }
 
-        LOG("Textura buscada en: %s, reconocida como: %s", fullTexturePath.c_str(), currentTypeName.c_str());
+        LOG("Textura detectada: %s (Tipo: %s)", fullTexturePath.c_str(), currentTypeName.c_str());
 
-        textures.push_back(GetOrLoadTexture(fullTexturePath, baseFilename, currentTypeName));
+        // 4. Cargamos usando la ruta corregida
+        textures.push_back(GetOrLoadTexture(fullTexturePath, filename, currentTypeName));
     }
     return textures;
 }
@@ -413,6 +405,12 @@ Texture Model::CreateSolidColorTexture(glm::vec4 color, const std::string& typeN
 
 void Model::createComponentsForMesh(std::shared_ptr<GameObject> gameObject, aiMesh* aiMesh, const aiScene* scene)
 {
+    // --- NUEVO CÓDIGO: FILTRO DE SEGURIDAD ---
+    // 1. Si la malla no tiene triángulos (es una línea o punto), LA IGNORAMOS.
+    if (!(aiMesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE)) {
+        LOG("Ignorando mesh no-triangular (Lineas/Puntos): %s", gameObject->GetName().c_str());
+        return; // <--- Salimos sin añadir componentes
+    }
     LOG("Creating components for mesh in GameObject '%s'", gameObject->GetName().c_str());
     LOG("  - Vertices: %d, Faces: %d", aiMesh->mNumVertices, aiMesh->mNumFaces);
 
@@ -655,9 +653,19 @@ Texture Model::GetOrLoadTexture(const string& fullPath, const string& fileName, 
         }
     }
 
-    // Not found, load new texture
+   
     Texture texture;
-    texture.TextureFromFile(fullPath, fileName.c_str());
+
+    
+    string directory = "";
+    size_t lastSlash = fullPath.find_last_of('/');
+    if (lastSlash != string::npos) {
+        directory = fullPath.substr(0, lastSlash);
+    }
+
+    texture.TextureFromFile(directory, fileName.c_str());
+    // -----------------------
+
     texture.mapType = typeName;
     texture.path = fullPath;
     textures_loaded.push_back(texture);
