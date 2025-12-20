@@ -12,6 +12,13 @@ public:
     bool Awake() override; // Usaremos Awake para crear carpetas base si no existen
     bool CleanUp() override;
 
+    //  Importación ---
+    // Escanea Assets y sincroniza con Library
+    void ImportAssetsToLibrary();
+    // Procesa un archivo individual y genera su .meta si falta
+    void ProcessAsset(const std::string& sourcePath);
+
+
     // --- Path Utilities ---
     bool Exists(const std::string& path) const;
     bool IsDirectory(const std::string& path) const;
@@ -45,4 +52,5 @@ public:
 
 
 private:
+    bool NeedsReimport(const std::string& source, const std::string& destination);
 };
