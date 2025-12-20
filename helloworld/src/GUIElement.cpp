@@ -16,6 +16,7 @@
 #include "Render.h"
 #include "ResMan.h"
 
+#include "SceneSerializer.h"
 #include <SDL3/SDL_opengl.h>
 #include <glm/glm.hpp>
 #include <assimp/version.h>
@@ -77,36 +78,51 @@ void GUIElement::MenuBarSetUp()
 {
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("Exit")) {
-				//handle exit
-				Application::GetInstance().requestExit = true;
-			}
-			ImGui::EndMenu();
-		}
 
-		if (ImGui::BeginMenu("View")) {
-			//handle view
-			if (ImGui::MenuItem("Console", nullptr, Application::GetInstance().guiManager.get()->showConsole)) {
-				bool set = !Application::GetInstance().guiManager.get()->showConsole;
-				Application::GetInstance().guiManager.get()->showConsole = set;
+			// --- NUEVO C√ìDIGO DE GUARDADO/CARGA ---
+
+			if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {
+				// Obtenemos la lista de objetos
+				auto& sceneObjects = Application::GetInstance().guiManager->sceneObjects;
+
+				if (!sceneObjects.empty()) {
+					// NOTA: El serializador espera un objeto ra√≠z (Root). 
+					// Si tienes varios objetos sueltos, lo ideal es guardar el primero que act√∫e como "Mundo" 
+					// o crear un objeto temporal que los agrupe.
+					// Por ahora, guardaremos el primer objeto de la lista (ej. tu BakerHouse):
+
+					SceneSerializer::SaveScene("Assets/Scenes/MyScene.json", sceneObjects[0]);
+					LOG("Scene Saved: Assets/Scenes/MyScene.json");
+				}
+				else {
+					LOG("Error: No objects to save");
+				}
 			}
-			if (ImGui::MenuItem("Configuration", nullptr, Application::GetInstance().guiManager.get()->showConfig)) {
-				bool set = !Application::GetInstance().guiManager.get()->showConfig;
-				Application::GetInstance().guiManager.get()->showConfig = set;
-			}
-			if (ImGui::MenuItem("Hierarchy", nullptr, Application::GetInstance().guiManager.get()->showHierarchy)) {
-				bool set = !Application::GetInstance().guiManager.get()->showHierarchy;
-				Application::GetInstance().guiManager.get()->showHierarchy = set;
-			}
-			if (ImGui::MenuItem("Inspector", nullptr, Application::GetInstance().guiManager.get()->showInspector)) {
-				bool set = !Application::GetInstance().guiManager.get()->showInspector;
-				Application::GetInstance().guiManager.get()->showInspector = set;
+
+			if (ImGui::MenuItem("Load Scene", "Ctrl+O")) {
+				// 1. Crear un objeto vac√≠o para recibir los datos
+				auto newRoot = std::make_shared<GameObject>("LoadedSceneRoot");
+
+				// 2. Cargar
+				SceneSerializer::LoadScene("Assets/Scenes/MyScene.json", newRoot);
+
+				// 3. A√±adir a la lista de la escena para que se dibuje
+				Application::GetInstance().guiManager->sceneObjects.push_back(newRoot);
+
+				LOG("Scene Loaded from Assets/Scenes/MyScene.json");
 			}
 			if (ImGui::MenuItem("Asset", nullptr, Application::GetInstance().guiManager.get()->showAssets)) {
 				bool set = !Application::GetInstance().guiManager.get()->showAssets;
 				Application::GetInstance().guiManager.get()->showAssets = set;
 			}
 
+			ImGui::Separator();
+			// --------------------------------------
+
+			if (ImGui::MenuItem("Exit")) {
+				//handle exit
+				Application::GetInstance().requestExit = true;
+			}
 			ImGui::EndMenu();
 		}
 
@@ -391,10 +407,10 @@ void GUIElement::HierarchySetUp(bool* show)
 	ImGui::End();
 }
 
-//assets menu (mirar si es mejor ponerlo abajo con el console como otra pestaÒa)
+//assets menu (mirar si es mejor ponerlo abajo con el console como otra pesta√±a)
 
 //void GUIElement::AssetSetUp(bool* show) {
-//	// ConfiguraciÛn de tamaÒo inicial de la ventana
+//	// Configuraci√≥n de tama√±o inicial de la ventana
 //	ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
 //	ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
 //	ImGui::SetNextWindowDockID(3, ImGuiCond_FirstUseEver);
@@ -404,10 +420,10 @@ void GUIElement::HierarchySetUp(bool* show)
 //		return;
 //	}
 //
-//	// Variable est·tica para mantener la posiciÛn de la navegaciÛn
+//	// Variable est√°tica para mantener la posici√≥n de la navegaci√≥n
 //	static fs::path currentPath = "Assets";
 //
-//	// --- CABECERA: NavegaciÛn ---
+//	// --- CABECERA: Navegaci√≥n ---
 //	ImGui::TextColored(ImVec4(1, 1, 0, 1), "Path: %s", currentPath.string().c_str());
 //
 //	if (currentPath != "Assets") {
@@ -424,7 +440,7 @@ void GUIElement::HierarchySetUp(bool* show)
 //	ImGui::Separator();
 //
 //	// --- CUERPO: Listado de Archivos y Carpetas ---
-//	// Usamos un child region para que el scroll sea independiente si la ventana es pequeÒa
+//	// Usamos un child region para que el scroll sea independiente si la ventana es peque√±a
 //	ImGui::BeginChild("FileView");
 //
 //	try {
@@ -432,7 +448,7 @@ void GUIElement::HierarchySetUp(bool* show)
 //			const auto& path = entry.path();
 //			std::string filename = path.filename().string();
 //
-//			// 1. LÛgica para CARPETAS
+//			// 1. L√≥gica para CARPETAS
 //			if (entry.is_directory()) {
 //				// Ocultar la carpeta Library para que el usuario no la toque manualmente
 //				if (filename == "Library") continue;
@@ -447,7 +463,7 @@ void GUIElement::HierarchySetUp(bool* show)
 //					ImGui::SetTooltip("Double click to enter folder");
 //				}
 //			}
-//			// 2. LÛgica para ARCHIVOS
+//			// 2. L√≥gica para ARCHIVOS
 //			else {
 //				// Ocultar archivos .meta
 //				if (path.extension() == ".meta") continue;
@@ -459,7 +475,7 @@ void GUIElement::HierarchySetUp(bool* show)
 //				// --- VISUALIZADOR DE REFERENCIAS ---
 //				auto& resMan = ResourceManager::GetInstance();
 //
-//				// Comprobamos si el recurso est· en la cachÈ del ResourceManager
+//				// Comprobamos si el recurso est√° en la cach√© del ResourceManager
 //				// Nota: Usamos la ruta del asset como clave
 //				if (resMan.IsResourceLoaded(path.string())) {
 //					auto res = resMan.GetResource(path.string());
@@ -500,11 +516,11 @@ void GUIElement::AssetSetUp(bool* show) {
 		return;
 	}
 
-	// Llamamos a la funciÛn que dibuja el ·rbol empezando desde "Assets"
-	// Usamos una carpeta fija o la ruta raÌz de tu proyecto
+	// Llamamos a la funci√≥n que dibuja el √°rbol empezando desde "Assets"
+	// Usamos una carpeta fija o la ruta ra√≠z de tu proyecto
 	DrawDirectoryRecursive("Assets");
 	
-	ImGui::Dummy(ImGui::GetContentRegionAvail()); // Ocupar el espacio vacÌo
+	ImGui::Dummy(ImGui::GetContentRegionAvail()); // Ocupar el espacio vac√≠o
 
 	if (ImGui::BeginDragDropTarget()) {
 		// Etiqueta especial de ImGui para archivos del sistema
@@ -523,7 +539,7 @@ void GUIElement::DrawDirectoryRecursive(const fs::path& dirPath) {
 		std::string filename = path.filename().string();
 
 		if (entry.is_directory()) {
-			// --- L”GICA PARA LA CARPETA LIBRARY ---
+			// --- L√ìGICA PARA LA CARPETA LIBRARY ---
 			bool isLibrary = (filename == "Library");
 
 			if (isLibrary) {
@@ -531,11 +547,11 @@ void GUIElement::DrawDirectoryRecursive(const fs::path& dirPath) {
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 			}
 
-			// AÒadimos un icono o prefijo visual
+			// A√±adimos un icono o prefijo visual
 			std::string label = isLibrary ? "[Internal] " + filename : "[D] " + filename;
 
 			if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_SpanFullWidth)) {
-				// Seguimos explorando dentro de Library tambiÈn
+				// Seguimos explorando dentro de Library tambi√©n
 				DrawDirectoryRecursive(path);
 				ImGui::TreePop();
 			}
@@ -545,7 +561,7 @@ void GUIElement::DrawDirectoryRecursive(const fs::path& dirPath) {
 			}
 		}
 		else {
-			// LÛgica de archivos (saltando .meta)
+			// L√≥gica de archivos (saltando .meta)
 			if (path.extension() == ".meta") continue;
 
 
@@ -556,7 +572,7 @@ void GUIElement::DrawDirectoryRecursive(const fs::path& dirPath) {
 			//	ImGuiTreeNodeFlags_NoTreePushOnOpen |
 			//	ImGuiTreeNodeFlags_SpanFullWidth);
 
-			//// Mostrar referencias si est· cargado
+			//// Mostrar referencias si est√° cargado
 			//auto& resMan = ResourceManager::GetInstance();
 			//if (resMan.IsResourceLoaded(path.string())) {
 			//	auto res = resMan.GetResource(path.string());
@@ -574,7 +590,7 @@ void GUIElement::DrawDirectoryRecursive(const fs::path& dirPath) {
 //	// Renderizamos el nodo del archivo
 //	ImGui::TreeNodeEx(fileName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth);
 //
-//	// Men˙ contextual al hacer clic derecho
+//	// Men√∫ contextual al hacer clic derecho
 //	if (ImGui::BeginPopupContextItem()) {
 //		if (ImGui::MenuItem("Delete File", "Del")) {
 //			//fileSystem->DeleteAssetCompletely(path);

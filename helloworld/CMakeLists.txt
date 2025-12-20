@@ -20,6 +20,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 add_executable(VroomEngine 
     src/VroomEngine.cpp 
@@ -69,6 +70,8 @@ add_executable(VroomEngine
     src/UUID.h 
     src/UUID.cpp 
     src/Resource.h
+    src/SceneSerializer.cpp
+    src/SceneSerializer.h
 )
 
-target_link_libraries(VroomEngine PRIVATE SDL3::SDL3 SDL3_image::SDL3_image fmt::fmt glad::glad assimp::assimp glm::glm imgui::imgui)
+target_link_libraries(VroomEngine PRIVATE SDL3::SDL3 SDL3_image::SDL3_image fmt::fmt glad::glad assimp::assimp glm::glm imgui::imgui nlohmann_json::nlohmann_json)

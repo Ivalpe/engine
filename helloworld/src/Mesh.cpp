@@ -262,38 +262,46 @@ void Mesh::CalculateNormals() {
 
 void Mesh::Load() {
     // Usamos la ruta de Library que ResMan nos ha asignado
-    std::string path = this->GetLibraryPath();
-    if (path.empty()) return;
+    std::string path = GetLibraryPath();
 
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
-        std::cout << "ERROR: No se pudo abrir el binario: " << path << std::endl;
+    if (path.empty()) {
+        std::cout << "[Error Mesh] Ruta de Library vacía." << std::endl;
         return;
     }
 
-    // 1. Leer Header
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "[Error Mesh] No se pudo abrir el archivo binario: " << path << std::endl;
+        return;
+    }
+
+    // 2. LEER HEADER
     uint32_t numVertices = 0;
     uint32_t numIndices = 0;
+
     file.read((char*)&numVertices, sizeof(uint32_t));
     file.read((char*)&numIndices, sizeof(uint32_t));
 
+    // Reservar memoria
     vertices.resize(numVertices);
     indices.resize(numIndices);
 
-    // 2. Leer Datos
+    // 3. LEER VÉRTICES (Coincide con ResMan::ImportMesh)
     for (uint32_t i = 0; i < numVertices; i++) {
         file.read((char*)&vertices[i].Position, sizeof(float) * 3);
         file.read((char*)&vertices[i].Normal, sizeof(float) * 3);
         file.read((char*)&vertices[i].texCoord, sizeof(float) * 2);
     }
-    file.read((char*)&indices[0], numIndices * sizeof(unsigned int));
+
+    // 4. LEER ÍNDICES (Lectura en bloque es segura para vectores de enteros)
+    file.read((char*)indices.data(), numIndices * sizeof(unsigned int));
 
     file.close();
 
-    // 3. Regenerar buffers de OpenGL
+    // 5. Configurar OpenGL y cálculos auxiliares
     setupMesh();
-    CalculateNormals();
-    CalculateAABB();
+    CalculateNormals(); // Genera las normales para el debug visual
+    CalculateAABB();    // Genera la caja de colisión
 
-    std::cout << "Mesh cargada desde binario propio (.vroom)! Vértices: " << numVertices << std::endl;
+    // std::cout << "[Mesh] Cargada correctamente desde Library: " << path << std::endl;
 }
