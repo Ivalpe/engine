@@ -10,7 +10,7 @@
 #include "FileSystem.h"
 #include "GameObject.h"
 
-enum ElementType{ Additional, MenuBar, Console, Config, Hierarchy, Inspector};
+enum ElementType{ Additional, MenuBar, Console, Config, Hierarchy, Inspector,Asset};
 
 class GUIElement {
 public:
@@ -35,4 +35,6 @@ public:
 private:
 	ElementType type;
 	GUIManager* manager;
+	void DrawDirectoryRecursive(const std::filesystem::path& dirPath);
+	void DrawFileNode(const std::string& path);
 };

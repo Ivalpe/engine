@@ -12,6 +12,13 @@ public:
     bool Awake() override; // Usaremos Awake para crear carpetas base si no existen
     bool CleanUp() override;
 
+    //  Importaci贸n ---
+    // Escanea Assets y sincroniza con Library
+    void ImportAssetsToLibrary();
+    // Procesa un archivo individual y genera su .meta si falta
+    void ProcessAsset(const std::string& sourcePath);
+
+
     // --- Path Utilities ---
     bool Exists(const std::string& path) const;
     bool IsDirectory(const std::string& path) const;
@@ -27,7 +34,7 @@ public:
     // Devuelve todos los archivos en un directorio (recursivo o no)
     std::vector<std::string> GetAllFiles(const std::string& dir, bool recursive = true);
 
-    // Devuelve todos los archivos filtrados por extensi髇 (ej: ".fbx")
+    // Devuelve todos los archivos filtrados por extensi贸n (ej: ".fbx")
     std::vector<std::string> GetFilesWithExtension(const std::string& dir, const std::string& extension, bool recursive = true);
 
     // Vital para detectar cambios en Assets y re-importar
@@ -40,12 +47,16 @@ public:
     // Separa el nombre del archivo de la ruta (ej: "Assets/model.fbx" -> "model.fbx")
     static std::string GetFileName(const std::string& path); 
 
-    // Separa solo el nombre sin extensi髇 (ej: "model")
+    // Separa solo el nombre sin extensi贸n (ej: "model")
     static std::string GetFileNameNoExtension(const std::string& path); 
 
-    // Obtiene la extensi髇 en min鷖culas (ej: ".fbx")
-    static std::string GetFileExtension(const std::string& path);
-
+    // Obtiene la extensi贸n en min煤sculas (ej: ".fbx")
+    std::string GetFileExtension(const std::string& path);
+    void DeleteAssetCompletely(const std::string& assetPath);
+    // Procesa un archivo arrastrado desde fuera del motor
+    void HandleExternalFileDrop(const std::string& externalPath, const std::string& targetFolder = "Assets");
 
 private:
+    bool NeedsReimport(const std::string& source, const std::string& destination);
+    
 };

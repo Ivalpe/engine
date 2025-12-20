@@ -14,6 +14,7 @@
 #include "CameraComponent.h"
 #include "Textures.h"
 #include "Render.h"
+#include "ResMan.h"
 
 #include "SceneSerializer.h"
 #include <SDL3/SDL_opengl.h>
@@ -25,6 +26,8 @@
 #include <glm/gtx/transform.hpp>
 
 #include <vector>
+
+namespace fs = std::filesystem;
 
 GUIElement::GUIElement(ElementType t, GUIManager* m)
 {
@@ -61,6 +64,9 @@ void GUIElement::ElementSetUp()
 	case ElementType::Inspector:
 		if (Application::GetInstance().guiManager.get()->showInspector) InspectorSetUp(&Application::GetInstance().guiManager.get()->showInspector);
 		break;
+	case ElementType::Asset:
+		if (Application::GetInstance().guiManager.get()->showAssets) AssetSetUp(&Application::GetInstance().guiManager.get()->showAssets);
+		break;
 	default:
 		LOG("No GUIType detected.");
 		break;
@@ -73,15 +79,15 @@ void GUIElement::MenuBarSetUp()
 	if (ImGui::BeginMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 
-			// --- NUEVO C�DIGO DE GUARDADO/CARGA ---
+			// --- NUEVO CÓDIGO DE GUARDADO/CARGA ---
 
 			if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {
 				// Obtenemos la lista de objetos
 				auto& sceneObjects = Application::GetInstance().guiManager->sceneObjects;
 
 				if (!sceneObjects.empty()) {
-					// NOTA: El serializador espera un objeto ra�z (Root). 
-					// Si tienes varios objetos sueltos, lo ideal es guardar el primero que act�e como "Mundo" 
+					// NOTA: El serializador espera un objeto raíz (Root). 
+					// Si tienes varios objetos sueltos, lo ideal es guardar el primero que actúe como "Mundo" 
 					// o crear un objeto temporal que los agrupe.
 					// Por ahora, guardaremos el primer objeto de la lista (ej. tu BakerHouse):
 
@@ -94,16 +100,20 @@ void GUIElement::MenuBarSetUp()
 			}
 
 			if (ImGui::MenuItem("Load Scene", "Ctrl+O")) {
-				// 1. Crear un objeto vac�o para recibir los datos
+				// 1. Crear un objeto vacío para recibir los datos
 				auto newRoot = std::make_shared<GameObject>("LoadedSceneRoot");
 
 				// 2. Cargar
 				SceneSerializer::LoadScene("Assets/Scenes/MyScene.json", newRoot);
 
-				// 3. A�adir a la lista de la escena para que se dibuje
+				// 3. Añadir a la lista de la escena para que se dibuje
 				Application::GetInstance().guiManager->sceneObjects.push_back(newRoot);
 
 				LOG("Scene Loaded from Assets/Scenes/MyScene.json");
+			}
+			if (ImGui::MenuItem("Asset", nullptr, Application::GetInstance().guiManager.get()->showAssets)) {
+				bool set = !Application::GetInstance().guiManager.get()->showAssets;
+				Application::GetInstance().guiManager.get()->showAssets = set;
 			}
 
 			ImGui::Separator();
@@ -231,7 +241,7 @@ void GUIElement::ConsoleSetUp(bool* show) {
 
 	//initial states
 	ImGui::SetNextWindowDockID(0, ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(350, 300), ImGuiCond_FirstUseEver);
 
 	//check if we should show it
 	if (!ImGui::Begin("Console", show, window_flags))
@@ -397,52 +407,203 @@ void GUIElement::HierarchySetUp(bool* show)
 	ImGui::End();
 }
 
-//assets menu (mirar si es mejor ponerlo abajo con el console como otra pesta�a)
+//assets menu (mirar si es mejor ponerlo abajo con el console como otra pestaña)
 
-void GUIElement::AssetSetUp(bool* show)
-{
+//void GUIElement::AssetSetUp(bool* show) {
+//	// Configuración de tamaño inicial de la ventana
+//	ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
+//	ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
+//	ImGui::SetNextWindowDockID(3, ImGuiCond_FirstUseEver);
+//
+//	if (!ImGui::Begin("Assets", show, window_flags)) {
+//		ImGui::End();
+//		return;
+//	}
+//
+//	// Variable estática para mantener la posición de la navegación
+//	static fs::path currentPath = "Assets";
+//
+//	// --- CABECERA: Navegación ---
+//	ImGui::TextColored(ImVec4(1, 1, 0, 1), "Path: %s", currentPath.string().c_str());
+//
+//	if (currentPath != "Assets") {
+//		if (ImGui::Button(" <- Back ")) {
+//			currentPath = currentPath.parent_path();
+//		}
+//		ImGui::SameLine();
+//	}
+//
+//	/*if (ImGui::Button("Reset to Root")) {
+//		currentPath = "Assets";
+//	}*/
+//
+//	ImGui::Separator();
+//
+//	// --- CUERPO: Listado de Archivos y Carpetas ---
+//	// Usamos un child region para que el scroll sea independiente si la ventana es pequeña
+//	ImGui::BeginChild("FileView");
+//
+//	try {
+//		for (auto const& entry : fs::directory_iterator(currentPath)) {
+//			const auto& path = entry.path();
+//			std::string filename = path.filename().string();
+//
+//			// 1. Lógica para CARPETAS
+//			if (entry.is_directory()) {
+//				// Ocultar la carpeta Library para que el usuario no la toque manualmente
+//				if (filename == "Library") continue;
+//
+//				// Usamos un icono visual [D] para directorios
+//				if (ImGui::Selectable((std::string("[D] ") + filename).c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+//					if (ImGui::IsMouseDoubleClicked(0)) {
+//						currentPath /= path.filename();
+//					}
+//				}
+//				if (ImGui::IsItemHovered()) {
+//					ImGui::SetTooltip("Double click to enter folder");
+//				}
+//			}
+//			// 2. Lógica para ARCHIVOS
+//			else {
+//				// Ocultar archivos .meta
+//				if (path.extension() == ".meta") continue;
+//
+//				// Dibujar el nombre del archivo
+//				ImGui::TextDisabled("[F]"); ImGui::SameLine();
+//				ImGui::Text("%s", filename.c_str());
+//
+//				// --- VISUALIZADOR DE REFERENCIAS ---
+//				auto& resMan = ResourceManager::GetInstance();
+//
+//				// Comprobamos si el recurso está en la caché del ResourceManager
+//				// Nota: Usamos la ruta del asset como clave
+//				if (resMan.IsResourceLoaded(path.string())) {
+//					auto res = resMan.GetResource(path.string());
+//					if (res) {
+//						// Alineamos el conteo de referencias a la derecha
+//						ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 120);
+//
+//						long count = res.use_count() - 1; // -1 porque el mapa m_resources tiene una
+//
+//						if (count > 0) {
+//							ImGui::TextColored(ImVec4(0, 1, 0, 1), "[Refs: %ld]", count);
+//						}
+//						else {
+//							// Si count es 0, significa que solo el ResourceManager lo conoce pero nadie lo usa
+//							ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), "[Unused]");
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+//	catch (const std::exception& e) {
+//		ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: Could not read directory.");
+//	}
+//
+//	ImGui::EndChild();
+//	ImGui::End();
+//}
+
+void GUIElement::AssetSetUp(bool* show) {
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
+	ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowDockID(3, ImGuiCond_FirstUseEver);
 
-	//initial states
-	ImGui::SetNextWindowDockID(0, ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_FirstUseEver);
 
-	//check if we should show it
-	if (!ImGui::Begin("AssetMenu", show, window_flags))
-	{
-		//if not -> end here
+	if (!ImGui::Begin("Asset", show)) {
 		ImGui::End();
 		return;
 	}
 
-	//create objects (minim cube)
-	if (ImGui::BeginMenu("Create...")) {
-		if (ImGui::MenuItem("Empty")) {
-			//Create empty 
-			auto empty = new Model();
-			Application::GetInstance().render->AddModel(empty);
-
-			//add empty model to lists
-			Application::GetInstance().openGL.get()->modelObjects.push_back(empty);
-			Application::GetInstance().guiManager.get()->sceneObjects.push_back(empty->GetRootGameObject());
-
-		}
-		//hacer que aqui se cargen las carpetas(cuando se hagan bien lol)
-		if (ImGui::MenuItem("Cube")) {
-			Model* defaultCube = Application::GetInstance().openGL->CreateCube();
-			Application::GetInstance().render->AddModel(defaultCube);
-		}
-		ImGui::EndMenu();
-	}
-
-	ImGui::Separator();
-
+	// Llamamos a la función que dibuja el árbol empezando desde "Assets"
+	// Usamos una carpeta fija o la ruta raíz de tu proyecto
+	DrawDirectoryRecursive("Assets");
 	
+	ImGui::Dummy(ImGui::GetContentRegionAvail()); // Ocupar el espacio vacío
+
+	if (ImGui::BeginDragDropTarget()) {
+		// Etiqueta especial de ImGui para archivos del sistema
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILESYSTEM_DRAG_DROP")) {
+			
+		}
+		ImGui::EndDragDropTarget();
+	}
 
 	ImGui::End();
 }
 
+void GUIElement::DrawDirectoryRecursive(const fs::path& dirPath) {
+	for (auto const& entry : fs::directory_iterator(dirPath)) {
+		const auto& path = entry.path();
+		std::string filename = path.filename().string();
 
+		if (entry.is_directory()) {
+			// --- LÓGICA PARA LA CARPETA LIBRARY ---
+			bool isLibrary = (filename == "Library");
+
+			if (isLibrary) {
+				// Cambiamos el color a un gris oscuro para indicar que es de sistema
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+			}
+
+			// Añadimos un icono o prefijo visual
+			std::string label = isLibrary ? "[Internal] " + filename : "[D] " + filename;
+
+			if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_SpanFullWidth)) {
+				// Seguimos explorando dentro de Library también
+				DrawDirectoryRecursive(path);
+				ImGui::TreePop();
+			}
+
+			if (isLibrary) {
+				ImGui::PopStyleColor(); // Restauramos el color normal
+			}
+		}
+		else {
+			// Lógica de archivos (saltando .meta)
+			if (path.extension() == ".meta") continue;
+
+
+			DrawFileNode(path.string());
+
+			//ImGui::TreeNodeEx(filename.c_str(),
+			//	ImGuiTreeNodeFlags_Leaf |
+			//	ImGuiTreeNodeFlags_NoTreePushOnOpen |
+			//	ImGuiTreeNodeFlags_SpanFullWidth);
+
+			//// Mostrar referencias si está cargado
+			//auto& resMan = ResourceManager::GetInstance();
+			//if (resMan.IsResourceLoaded(path.string())) {
+			//	auto res = resMan.GetResource(path.string());
+			//	if (res) {
+			//		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 100);
+			//		ImGui::TextDisabled("[%ld]", res.use_count() - 1);
+			//	}
+			//}
+		}
+	}
+}
+//void GUIElement::DrawFileNode(const std::string& path) {
+//	std::string fileName = Application::GetInstance().fileSystem.get()->GetFileName(path);
+//
+//	// Renderizamos el nodo del archivo
+//	ImGui::TreeNodeEx(fileName.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+//
+//	// Menú contextual al hacer clic derecho
+//	if (ImGui::BeginPopupContextItem()) {
+//		if (ImGui::MenuItem("Delete File", "Del")) {
+//			//fileSystem->DeleteAssetCompletely(path);
+//			Application::GetInstance().fileSystem.get()->DeleteAssetCompletely(path);
+//		}
+//
+//		//ImGui::Separator();
+//
+//		
+//
+//		ImGui::EndPopup();
+//	}
+//}
 
 void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_ptr<GameObject>& selected) {
 	//make sure obj is not set for deletion
@@ -481,6 +642,57 @@ void GUIElement::DrawNode(const std::shared_ptr<GameObject>& obj, std::shared_pt
 	{
 		for (auto& child : obj->GetChildren()) DrawNode(child, selected);
 		ImGui::TreePop();
+	}
+}
+
+void GUIElement::DrawFileNode(const std::string& path) {
+	// 1. Obtener acceso al FileSystem y al nombre del archivo
+	auto fileSystem = Application::GetInstance().fileSystem.get();
+	std::string fileName = fileSystem->GetFileName(path);
+
+	// 2. Configurar flags para el nodo
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
+		ImGuiTreeNodeFlags_NoTreePushOnOpen |
+		ImGuiTreeNodeFlags_SpanFullWidth;
+
+	// 3. Dibujar el Nodo del Archivo
+	ImGui::TreeNodeEx(fileName.c_str(), flags);
+
+	// --- NUEVO: DRAG AND DROP SOURCE ---
+	if (ImGui::BeginDragDropSource()) {
+		// Enviamos la ruta del archivo como "Payload"
+		const char* pathStr = path.c_str();
+		ImGui::SetDragDropPayload("ASSET_PATH", pathStr, (strlen(pathStr) + 1) * sizeof(char));
+
+		// Feedback visual al arrastrar
+		ImGui::Text("Cargando: %s", fileName.c_str());
+		ImGui::EndDragDropSource();
+	}
+
+	// 4. LOGICA DE BORRADO (Click Derecho)
+	if (ImGui::BeginPopupContextItem()) {
+		if (ImGui::MenuItem("Delete File", "Del")) {
+			fileSystem->DeleteAssetCompletely(path);
+		}
+		ImGui::Separator();
+		ImGui::TextDisabled("%s", fileName.c_str());
+		ImGui::EndPopup();
+	}
+
+	// 5. MOSTRAR REFERENCIAS
+	auto& resMan = ResourceManager::GetInstance();
+	if (resMan.IsResourceLoaded(path)) {
+		auto res = resMan.GetResource(path);
+		if (res) {
+			ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 50);
+			long count = res.use_count() - 1;
+			if (count > 0) {
+				ImGui::TextColored(ImVec4(0, 1, 0, 1), "[%ld]", count);
+			}
+			else {
+				ImGui::TextDisabled("[0]");
+			}
+		}
 	}
 }
 
@@ -601,6 +813,8 @@ void GUIElement::InspectorSetUp(bool* show)
 					}
 				}
 			}
+
+
 		}
 	}
 	else {

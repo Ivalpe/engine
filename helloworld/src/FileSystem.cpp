@@ -1,8 +1,9 @@
 #include "FileSystem.h"
 #include "Log.h"
 #include <algorithm>
+#include <fstream>
 
-// Alias para escribir menos
+
 namespace fs = std::filesystem;
 
 FileSystem::FileSystem() {
@@ -18,6 +19,8 @@ bool FileSystem::Awake() {
     // Asegurarnos de que las carpetas base existan
     if (!Exists("Assets")) CreateDir("Assets");
     if (!Exists("Assets/Library")) CreateDir("Assets/Library");
+
+    ImportAssetsToLibrary();
 
     return true;
 }
@@ -45,10 +48,28 @@ bool FileSystem::CreateDir(const std::string& path) {
     }
 }
 
+//bool FileSystem::Copy(const std::string& source, const std::string& destination) {
+//    if (!Exists(source)) return false;
+//    try {
+//        // fs::copy_options::overwrite_existing permite sobrescribir si ya existe
+//        fs::copy(source, destination, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+//        return true;
+//    }
+//    catch (fs::filesystem_error& e) {
+//        LOG("Error copying from %s to %s: %s", source.c_str(), destination.c_str(), e.what());
+//        return false;
+//    }
+//}
+
 bool FileSystem::Copy(const std::string& source, const std::string& destination) {
     if (!Exists(source)) return false;
     try {
-        // fs::copy_options::overwrite_existing permite sobrescribir si ya existe
+        // Si el destino es un archivo, usamos copy_file que es más específico
+        if (!fs::is_directory(source)) {
+            return fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
+        }
+        
+        // Si es directorio, usamos copy normal
         fs::copy(source, destination, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
         return true;
     }
@@ -57,6 +78,7 @@ bool FileSystem::Copy(const std::string& source, const std::string& destination)
         return false;
     }
 }
+
 
 bool FileSystem::Delete(const std::string& path) {
     if (!Exists(path)) return false;
@@ -143,4 +165,156 @@ std::string FileSystem::GetFileExtension(const std::string& path) {
     std::string ext = fs::path(path).extension().string();
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
     return ext;
+}
+
+//void FileSystem::ImportAssetsToLibrary() {
+//    LOG("FileSystem::Sincronizando Assets con Library...");
+//
+//    // Obtenemos todos los archivos de Assets
+//    std::vector<std::string> allAssets = GetAllFiles("Assets", true);
+//    LOG("Archivos encontrados en Assets: %d", (int)allAssets.size());
+//
+//    for (const std::string& assetPath : allAssets) {
+//        // Ignorar archivos que ya están dentro de Library
+//        if (assetPath.find("Assets/Library") != std::string::npos) continue;
+//
+//        // Ignorar los propios archivos .meta
+//        if (GetFileExtension(assetPath) == ".meta") continue;
+//
+//        ProcessAsset(assetPath);
+//    }
+//}
+
+void FileSystem::ImportAssetsToLibrary() {
+   // std::string assetsPath = "Assets";
+
+    // 1. Si no existe en la carpeta actual, probamos una carpeta atrás (../Assets)
+    // Esto es común si el exe está en Build/ o Debug/
+   // if (!Exists(assetsPath)) {}
+    std::string assetsPath = "../Assets";
+
+
+    // 2. Si sigue sin existir, probamos dos carpetas atrás (../../Assets)
+    // Común en estructuras de Visual Studio (x64/Debug/)
+    if (!Exists(assetsPath)) {
+        assetsPath = "../../Assets";
+    }
+
+    if (!Exists(assetsPath)) {
+        LOG("ERROR: No se pudo encontrar la carpeta Assets en ninguna ruta relativa.");
+        return;
+    }
+
+    // 2. Imprime la ruta absoluta para que verifiques en Windows si es la correcta
+    LOG("Carpeta Assets encontrada en: %s", fs::absolute(assetsPath).string().c_str());
+
+   // LOG("Carpeta Assets detectada en: %s", assetsPath.c_str());
+
+    // Ahora usamos esa ruta encontrada para buscar los archivos
+    std::vector<std::string> allAssets = GetAllFiles(assetsPath, true);
+
+    for (const std::string& assetPath : allAssets) {
+        // Importante: No procesar lo que ya esté en Library
+        if (assetPath.find("/Library/") != std::string::npos) continue;
+        if (GetFileExtension(assetPath) == ".meta") continue;
+
+        ProcessAsset(assetPath);
+    }
+}
+
+void FileSystem::ProcessAsset(const std::string& sourcePath) {
+    std::string cleanSource = NormalizePath(sourcePath);
+
+    // Encontrar dónde empieza "Assets/" para ignorar los "../" previos
+    size_t assetsPos = cleanSource.find("Assets/");
+    if (assetsPos == std::string::npos) return;
+
+    // relativePath será algo como "Textures/wood.png"
+    std::string relativePath = cleanSource.substr(assetsPos + 7); // 7 es la longitud de "Assets/"
+
+    // El destino SIEMPRE debe ser relativo al ejecutable actual
+    std::string destination = "Assets/Library/" + relativePath + ".bin";
+    destination = NormalizePath(destination);
+
+    // Asegurar carpetas de destino
+    std::string destFolder = fs::path(destination).parent_path().string();
+    if (!Exists(destFolder)) CreateDir(destFolder);
+
+	std::string fileName = GetFileName(cleanSource);
+    // 5. Verificar si el archivo necesita ser re-importado
+    if (NeedsReimport(cleanSource, destination)) {
+        LOG("[FileSystem] Sincronizando Asset: %s", relativePath.c_str());
+
+        // COPIAR: En el futuro aquí llamarás a funciones como ImportMesh() o ImportTexture()
+        // Por ahora, copiamos el archivo original a la carpeta espejo en Library
+        if (Copy(cleanSource, destination)) {
+
+            // 6. GESTIÓN DE METADATOS: Crear .meta al lado del archivo original (exterior)
+            std::string metaPath = cleanSource + ".meta";
+            if (!Exists(metaPath)) {
+                std::ofstream metaFile(metaPath);
+                if (metaFile.is_open()) {
+                    // Guardamos información básica en el meta
+                    metaFile << "resource_name: " << fileName << "\n";
+                    metaFile << "original_rel_path: " << relativePath << "\n";
+                    metaFile << "import_version: 1.0\n";
+                    metaFile.close();
+                    LOG("[FileSystem] Generado meta: %s", metaPath.c_str());
+                }
+            }
+        }
+    }
+}
+
+bool FileSystem::NeedsReimport(const std::string& source, const std::string& destination) {
+    if (!Exists(destination)) return true;
+
+    try {
+        // Usamos la comparación directa de la librería filesystem (más precisa que convertir a long long)
+        auto sourceTime = fs::last_write_time(source);
+        auto destTime = fs::last_write_time(destination);
+
+        return sourceTime > destTime;
+    }
+    catch (fs::filesystem_error& e) {
+        return true; // Ante la duda, re-importamos
+    }
+}
+
+void FileSystem::DeleteAssetCompletely(const std::string& assetPath) {
+    // 1. Borrar el archivo original y su .meta
+    Delete(assetPath);
+    Delete(assetPath + ".meta");
+
+    // 2. Borrar el binario en Library
+    // Calculamos la ruta espejo como hicimos en ProcessAsset
+    std::string cleanSource = NormalizePath(assetPath);
+    std::string relativePath = cleanSource;
+    std::string assetsPrefix = "Assets/";
+    size_t pos = cleanSource.find(assetsPrefix);
+    if (pos != std::string::npos) {
+        relativePath = cleanSource.substr(pos + assetsPrefix.length());
+    }
+
+    std::string libraryPath = "Assets/Library/" + relativePath + ".bin";
+    Delete(libraryPath);
+
+    LOG("[FileSystem] Asset eliminado por completo: %s", relativePath.c_str());
+}
+
+void FileSystem::HandleExternalFileDrop(const std::string& externalPath, const std::string& targetFolder) {
+    if (!Exists(externalPath)) return;
+
+    std::string fileName = GetFileName(externalPath);
+    std::string destination = targetFolder + "/" + fileName;
+    destination = NormalizePath(destination);
+
+    LOG("[FileSystem] Detectado archivo externo: %s. Copiando a: %s", fileName.c_str(), destination.c_str());
+
+    // 1. Copiamos el archivo físicamente a nuestra carpeta de Assets
+    if (Copy(externalPath, destination)) {
+        // 2. Llamamos a ProcessAsset para que genere el .meta y lo meta en Library
+        ProcessAsset(destination);
+        LOG("[FileSystem] Archivo importado con exito.");
+    }
 }

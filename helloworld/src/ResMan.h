@@ -31,6 +31,19 @@
             void ImportAssets(); 
             VroomUUID GetOrCreateMeta(const std::string& assetPath);
 
+
+            bool IsResourceLoaded(const std::string& path) {
+                  return m_resources.find(path) != m_resources.end();
+             }
+
+            std::shared_ptr<Resource> GetResource(const std::string& path) {
+                if (IsResourceLoaded(path)) {
+                    return m_resources[path];
+                }
+                return nullptr;
+            }
+
+
         private:
            
             ResourceManager();
@@ -49,6 +62,7 @@
             void SaveToLibrary(const std::string& assetPath, VroomUUID uid);
             void ImportMesh(const std::string& assetPath, const std::string& libraryPath);
             void ImportTexture(const std::string& assetPath, const std::string& libraryPath);
+            
         };
 
     
